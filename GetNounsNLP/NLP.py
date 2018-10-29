@@ -12,12 +12,10 @@ def getWords(text):
 
     return phrases
 
-def getNoums(text):
-    sentances = nltk.sent_tokenize(text)
+def getNoums(phrases):
     nouns = []
 
-    for sentance in sentances:
-        words = nltk.word_tokenize(sentance)
+    for words in phrases:
         sentanceNouns = []
         indexes = []
 
@@ -50,11 +48,10 @@ def getStems(phrases):
     stems = []
     for sentance in phrases:
         for word in sentance:
-            if word not in SEPARATORS:
+            if word not in SEPARATORS and not word.isdigit():
                 stems.append(stemmer.stem(word))
 
     return stems
-
 
 def main():
     textFile = open('randomLetter.txt', 'r')
@@ -62,7 +59,7 @@ def main():
     phrases = getWords(text)
     print phrases
     print getStems(phrases)
-    print getNoums(text)
+    print getNoums(phrases)
     return 0
 
 if __name__ == '__main__':
