@@ -139,8 +139,6 @@ def getTopNouns(OCR, rekl):
 
         tfidf.append(tf[i] * idf[i])
 
-    print tfidf
-
     topTen = []
     for i in range(len(tfidf)):
         for j in range(10):
@@ -160,19 +158,18 @@ def getTopNouns(OCR, rekl):
                 topTen[j] = i
                 break
 
-    print topTen
     topNouns = []
     for i in range(len(topTen)):
         topNouns.append(nouns[topTen[i]])
 
-    print topNouns
+    return topNouns
 
 
 def main():
     textFile = open("ocrList/rekl:9222.txt", 'r')
     text = textFile.read()
 
-    getTopNouns(text, 9222)
+    print getTopNouns(text, 9222)
 
     return 0
 
