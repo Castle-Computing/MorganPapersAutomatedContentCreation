@@ -102,24 +102,78 @@ def getIDF(words, textCol):
 
     return wordIDF
 
-def main():
-    letters = os.listdir('./ocrList')
+def getTopNouns(OCR, rekl):
     texts = []
+
+    letters = os.listdir('./ocrList')
+    name = "rekl:" + str(rekl) + ".txt"
+
+    if name not in letters:
+        newFile = open('ocrList/' + name, 'w')
+        newFile.write(OCR)
+        newFile.close()
+
     for letter in letters:
-        texts.append(open('ocrList/' + letter, 'r'))
+        if letter != name:
+            texts.append(open('ocrList/' + letter, 'r'))
 
     textsStings = []
     for text in texts:
         textsStings.append(text.read())
 
     collection = TextCollection(textsStings)
-    phrases = getWords(textsStings[0])
-    print phrases
-    print getStems(phrases)
+    phrases = getWords(OCR)
     nouns = getNoums(phrases)
-    print nouns
-    print getTF(nouns, collection, textsStings[0])
-    print getIDF(nouns, collection)
+
+    if len(nouns) < 10:
+        return nouns
+
+    tf = getTF(nouns, collection, OCR)
+    idf = getIDF(nouns, collection)
+    maxNum = max(idf)
+
+    tfidf = []
+    for i in range(len(tf)):
+        if idf[i] == 0:
+            idf[i] = maxNum * 2
+
+        tfidf.append(tf[i] * idf[i])
+
+    print tfidf
+
+    topTen = []
+    for i in range(len(tfidf)):
+        for j in range(10):
+            if len(topTen) == j:
+                topTen.append(i)
+                break
+
+            if tfidf[topTen[j]] == tfidf[i] and nouns[topTen[j]] == nouns[i]:
+                break
+
+            if tfidf[i] > tfidf[topTen[j]]:
+                if len(topTen) == 10:
+                    topTen[j + 1:] = topTen[j: -1]
+                else:
+                    topTen[j + 1:] = topTen[j:]
+
+                topTen[j] = i
+                break
+
+    print topTen
+    topNouns = []
+    for i in range(len(topTen)):
+        topNouns.append(nouns[topTen[i]])
+
+    print topNouns
+
+
+def main():
+    textFile = open("ocrList/rekl:9222.txt", 'r')
+    text = textFile.read()
+
+    getTopNouns(text, 9222)
+
     return 0
 
 if __name__ == '__main__':
