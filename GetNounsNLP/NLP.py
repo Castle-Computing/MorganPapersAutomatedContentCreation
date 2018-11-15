@@ -1,9 +1,16 @@
 import os
 import nltk
+import json
+import urllib2
+import sys
 from nltk.text import TextCollection
 
 SEPARATORS = ['.', ',', ':', ';', '?', '!']
 NOUNS_TAGS = ['NN', 'NNP', 'NNS', 'NNPS']
+
+FIRST_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&omitHeader=true&wt=json"
+SECOND_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=1000&omitHeader=true&wt=json"
+THIRD_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=2000&omitHeader=true&wt=json"
 
 def getWords(text):
     """
@@ -18,7 +25,6 @@ def getWords(text):
         becomes:
         [["Hello", "World", "!"], ["Goodbye", "Cruel", "World", "!"]]
     """
-
     sentances = nltk.sent_tokenize(text)
     phrases = []
 
@@ -46,7 +52,7 @@ def getNoums(phrases):
 
         i = 0
         for word, tag in nltk.pos_tag(words):
-            if(tag in NOUNS_TAGS):
+            if(tag in NOUNS_TAGS) and word.isalpha():
                 sentanceNouns.append(word)
                 indexes.append(i)
 
@@ -164,12 +170,128 @@ def getTopNouns(OCR, rekl):
 
     return topNouns
 
+def crawlDatabase():
+    firstRequest = urllib2.Request(FIRST_THOUSAND,
+                                   headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+    firstResults = json.load(urllib2.urlopen(firstRequest))
+
+    secondRequest = urllib2.Request(SECOND_THOUSAND,
+                                    headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+    secondResults = json.load(urllib2.urlopen(secondRequest))
+
+    thirdRequest = urllib2.Request(THIRD_THOUSAND,
+                                   headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+    thirdResults = json.load(urllib2.urlopen(thirdRequest))
+
+    docs = firstResults["response"]["docs"]
+    docs.extend(secondResults["response"]["docs"])
+    docs.extend(thirdResults["response"]["docs"])
+
+    for doc in docs:
+        parentPID = doc["PID"]
+        childrenURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/ancestors_ms:%22" + parentPID + "%22%20?rows=100&omitHeader=true&wt=json"
+        childRequest = urllib2.Request(childrenURL,
+                                       headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+        childResults = json.load(urllib2.urlopen(childRequest))
+        childDocs = childResults["response"]["docs"]
+        childPids = list()
+
+        for childDoc in childDocs:
+            childPID = childDoc["PID"]
+            childPids.append(childPID)
+
+        childPids.sort()
+
+        pids = ",".join(childPids)
+
+        print(parentPID + "," + pids)
+
+def getOCRs():
+
+    with open("Children.txt") as f:
+        lines = [line.rstrip('\n') for line in f]
+        for line in lines:
+            pidValues = line.split(",")
+            pidValues.reverse()
+
+            parentPID = pidValues.pop()
+            ocr = ""
+
+            while len(pidValues) > 0:
+                ocrURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + pidValues.pop() + "/datastream/OCR"
+                ocrRequest = urllib2.Request(ocrURL, headers={
+                    "authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+                try:
+                    ocrContent = urllib2.urlopen(ocrRequest)
+                    if ocrContent.getcode() == 200:
+                        ocr = ocr + ocrContent.read()
+
+                    ocrContent.close()
+                except:
+                    e = sys.exc_info()[0]
+                    print(e)
+
+            if len(ocr) > 0:
+                ocrFile = open("ocrList/" + parentPID + ".txt", "w+")
+                ocrFile.write(ocr)
+                ocrFile.close()
+
+                print "added " + parentPID
+
+def calDataIDF():
+    letters = os.listdir('./ocrList')
+    wordIDF = {}
+    letterFiles = []
+
+    for letter in letters:
+        try:
+            letterFiles.append(open('ocrList/' + letter, 'r'))
+
+        except:
+            e = sys.exc_info()[0]
+            print(e)
+
+    texts = []
+    for file in letterFiles:
+        texts.append(file.read().lower())
+
+    collection = TextCollection(texts)
+
+    invalidOCR = open("invalidOCR.txt", "w")
+
+    i = 0
+    for text in texts:
+        try:
+            phrases = getWords(text)
+            nouns = getNoums(phrases)
+
+            for noun in nouns:
+                if noun not in wordIDF:
+                    wordIDF[noun] = collection.idf(noun)
+
+        except:
+            print "Unable to parse OCR from " + letters[i]
+            invalidOCR.write(letters[i][:-4] + "\n")
+
+        i += 1
+
+    invalidOCR.close()
+
+    with open('IDFData.json', 'w') as output:
+        json.dump(wordIDF, output)
+        output.close()
+
+    for file in letterFiles:
+        file.close()
 
 def main():
-    textFile = open("ocrList/rekl:9222.txt", 'r')
-    text = textFile.read()
+    #crawlDatabase()
+    #getOCRs()
+    calDataIDF()
+    #textFile = open("ocrList/rekl:9222.txt", 'r')
+    #text = textFile.read()
 
-    print getTopNouns(text, 9222)
+    #print getTopNouns(text, 9222)
 
     return 0
 
