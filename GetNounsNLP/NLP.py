@@ -3,6 +3,7 @@ import nltk
 import json
 import urllib2
 import sys
+import math
 from nltk.text import TextCollection
 from textblob import TextBlob
 
@@ -103,33 +104,46 @@ def getTF(words, textCol, text):
 
     return wordFreq
 
-def getIDF(words, textCol):
-    wordIDF = []
-    for word in words:
-        wordIDF.append(textCol.idf(word))
+def getIDF(words):
+    with open('IDFData.json') as dataFile:
+
+        data = json.load(dataFile)
+        wordIDF = []
+
+        for word in words:
+            blob = TextBlob(word.lower())
+            newNoun = ""
+
+            total = len(blob.words)
+            for j in range(total):
+                noun = blob.words[j]
+
+                if j == total - 1:
+                    noun = blob.words[j].singularize()
+
+                if j != 0:
+                    newNoun += " "
+
+                newNoun += str(noun)
+
+            if newNoun in data:
+                wordIDF.append(data[newNoun])
+            else:
+                wordIDF.append(0)
 
     return wordIDF
 
 def getTopNouns(OCR, rekl):
-    texts = []
-
-    letters = os.listdir('./ocrList')
     name = "rekl:" + str(rekl) + ".txt"
-
+    letters = os.listdir('./ocrList')
     if name not in letters:
-        newFile = open('ocrList/' + name, 'w')
-        newFile.write(OCR)
-        newFile.close()
+        try:
+            newFile = open("ocrList/" + name, "w")
+        except:
+            print "Could not create file!"
 
-    for letter in letters:
-        if letter != name:
-            texts.append(open('ocrList/' + letter, 'r'))
-
-    textsStings = []
-    for text in texts:
-        textsStings.append(text.read())
-
-    collection = TextCollection(textsStings)
+def calTopNouns(OCR):
+    collection = TextCollection(OCR)
     phrases = getWords(OCR)
     nouns = getNoums(phrases)
 
@@ -137,13 +151,18 @@ def getTopNouns(OCR, rekl):
         return nouns
 
     tf = getTF(nouns, collection, OCR)
-    idf = getIDF(nouns, collection)
+    idf = getIDF(nouns)
+
+    print nouns
+    print tf
+    print idf
+
     maxNum = max(idf)
 
     tfidf = []
     for i in range(len(tf)):
         if idf[i] == 0:
-            idf[i] = maxNum * 2
+            idf[i] = maxNum + math.log(2)
 
         tfidf.append(tf[i] * idf[i])
 
@@ -253,7 +272,7 @@ def calDataIDF():
 
     texts = []
     for file in letterFiles:
-        texts.append(file.read().lower())
+        texts.append(file.read())
 
     collection = TextCollection(texts)
 
@@ -266,7 +285,7 @@ def calDataIDF():
             nouns = getNoums(phrases)
 
             for noun in nouns:
-                blob = TextBlob(noun)
+                blob = TextBlob(noun.lower())
                 newNoun = ""
 
                 idf = 0
@@ -301,14 +320,19 @@ def calDataIDF():
     for file in letterFiles:
         file.close()
 
+def updateData():
+    crawlDatabase()
+    getOCRs()
+    calDataIDF()
+
 def main():
     #crawlDatabase()
     #getOCRs()
-    calDataIDF()
-    #textFile = open("ocrList/rekl:9222.txt", 'r')
-    #text = textFile.read()
+    #calDataIDF()
+    textFile = open("ocrList/rekl:12684.txt", 'r')
+    text = textFile.read()
 
-    #print getTopNouns(text, 9222)
+    print calTopNouns(text)
 
     return 0
 
