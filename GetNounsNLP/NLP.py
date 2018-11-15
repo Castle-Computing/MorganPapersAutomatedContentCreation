@@ -4,6 +4,8 @@ import json
 import urllib2
 import sys
 from nltk.text import TextCollection
+from textblob import TextBlob
+
 
 SEPARATORS = ['.', ',', ':', ';', '?', '!']
 NOUNS_TAGS = ['NN', 'NNP', 'NNS', 'NNPS']
@@ -236,8 +238,6 @@ def getOCRs():
                 ocrFile.write(ocr)
                 ocrFile.close()
 
-                print "added " + parentPID
-
 def calDataIDF():
     letters = os.listdir('./ocrList')
     wordIDF = {}
@@ -266,10 +266,27 @@ def calDataIDF():
             nouns = getNoums(phrases)
 
             for noun in nouns:
-                if noun not in wordIDF:
-                    wordIDF[noun] = collection.idf(noun)
+                blob = TextBlob(noun)
+                newNoun = ""
 
-        except:
+                idf = 0
+                total = len(blob.words)
+                for j in range(total):
+                    word = blob.words[j]
+                    if j == total - 1:
+                        word = blob.words[j].singularize()
+
+                    idf += collection.idf(str(word))
+
+                    if j != 0:
+                        newNoun += " "
+
+                    newNoun += str(word)
+
+                if newNoun not in wordIDF:
+                    wordIDF[newNoun] = idf
+
+        except UnicodeDecodeError:
             print "Unable to parse OCR from " + letters[i]
             invalidOCR.write(letters[i][:-4] + "\n")
 
