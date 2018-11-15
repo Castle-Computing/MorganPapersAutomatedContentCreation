@@ -15,6 +15,25 @@ FIRST_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EX
 SECOND_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=1000&omitHeader=true&wt=json"
 THIRD_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=2000&omitHeader=true&wt=json"
 
+def toSingular(word):
+    newNoun = ""
+
+    blob = TextBlob(word)
+    total = len(blob.words)
+
+    for j in range(total):
+        noun = blob.words[j]
+        if j == total - 1:
+            noun = blob.words[j].singularize()
+
+        if j != 0:
+            newNoun += " "
+
+        newNoun += str(noun)
+
+    return newNoun
+
+
 def getWords(text):
     """
     Gets a 2D list of the words in a text string
@@ -111,28 +130,16 @@ def getIDF(words):
         wordIDF = []
 
         for word in words:
-            blob = TextBlob(word.lower())
-            newNoun = ""
+            singular = toSingular(word.lower())
 
-            total = len(blob.words)
-            for j in range(total):
-                noun = blob.words[j]
-
-                if j == total - 1:
-                    noun = blob.words[j].singularize()
-
-                if j != 0:
-                    newNoun += " "
-
-                newNoun += str(noun)
-
-            if newNoun in data:
-                wordIDF.append(data[newNoun])
+            if singular in data:
+                wordIDF.append(data[singular])
             else:
                 wordIDF.append(0)
 
     return wordIDF
 
+#TODO
 def getTopNouns(OCR, rekl):
     name = "rekl:" + str(rekl) + ".txt"
     letters = os.listdir('./ocrList')
@@ -153,9 +160,10 @@ def calTopNouns(OCR):
     tf = getTF(nouns, collection, OCR)
     idf = getIDF(nouns)
 
-    print nouns
-    print tf
-    print idf
+    #for i in range(len(nouns)):
+    #    print nouns[i],
+    #    print tf[i],
+    #    print idf[i]
 
     maxNum = max(idf)
 
