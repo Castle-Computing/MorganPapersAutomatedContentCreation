@@ -83,7 +83,10 @@ def getNoums(phrases):
         i = 0
         last = len(sentanceNouns) - 1
         while i < last:
-            if indexes[i] + 1 == indexes[i + 1]:
+            if indexes[i] + 1 == indexes[i + 1] and \
+                    sentanceNouns[i].lower() != "hearst" and \
+                    sentanceNouns[i + 1].lower() != "hearst":
+
                 sentanceNouns[i] += " " + sentanceNouns[i + 1]
                 indexes.pop(i + 1)
                 sentanceNouns.pop(i + 1)
@@ -293,7 +296,7 @@ def calDataIDF():
             nouns = getNoums(phrases)
 
             for noun in nouns:
-                blob = TextBlob(noun.lower())
+                blob = TextBlob(noun)
                 newNoun = ""
 
                 idf = 0
@@ -310,8 +313,8 @@ def calDataIDF():
 
                     newNoun += str(word)
 
-                if newNoun not in wordIDF:
-                    wordIDF[newNoun] = idf
+                if newNoun.lower() not in wordIDF:
+                    wordIDF[newNoun.lower()] = idf
 
         except UnicodeDecodeError:
             print "Unable to parse OCR from " + letters[i]
@@ -336,8 +339,8 @@ def updateData():
 def main():
     #crawlDatabase()
     #getOCRs()
-    #calDataIDF()
-    textFile = open("ocrList/rekl:12684.txt", 'r')
+    calDataIDF()
+    textFile = open("ocrList/rekl:10693.txt", 'r')
     text = textFile.read()
 
     print calTopNouns(text)
