@@ -271,19 +271,20 @@ def getOCRs():
 def calDataIDF():
     letters = os.listdir('./ocrList')
     wordIDF = {}
-    letterFiles = []
 
+    texts = []
     for letter in letters:
         try:
-            letterFiles.append(open('ocrList/' + letter, 'r'))
-
+            file = open('ocrList/' + letter, 'r')
+            texts.append(file.read())
+            file.close()
         except:
             e = sys.exc_info()[0]
             print(e)
 
-    texts = []
-    for file in letterFiles:
-        texts.append(file.read())
+    #texts = []
+    #for file in letterFiles:
+    #    texts.append(file.read())
 
     collection = TextCollection(texts)
 
@@ -327,9 +328,6 @@ def calDataIDF():
     with open('IDFData.json', 'w') as output:
         json.dump(wordIDF, output)
         output.close()
-
-    for file in letterFiles:
-        file.close()
 
 def updateData():
     crawlDatabase()
