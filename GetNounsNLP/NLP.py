@@ -142,15 +142,35 @@ def getIDF(words):
 
     return wordIDF
 
-#TODO
-def getTopNouns(OCR, rekl):
-    name = "rekl:" + str(rekl) + ".txt"
+def getTopNouns(rekl):
+    with open('TopNounsData.json') as dataFile:
+        data = json.load(dataFile)
+        if rekl in data:
+            return data[rekl]
+        else:
+            print "No letter with " + rekl + " of database!"
+
+
+def updateTopNouns():
     letters = os.listdir('./ocrList')
-    if name not in letters:
+    lettersTopNouns = {}
+
+    for letter in letters:
         try:
-            newFile = open("ocrList/" + name, "w")
+            print letter[:-4]
+            file = open('ocrList/' + letter, 'r')
+            OCR = file.read()
+            file.close()
+            topNouns = calTopNouns(OCR)
+            lettersTopNouns[letter[:-4]] = topNouns
+
         except:
-            print "Could not create file!"
+            e = sys.exc_info()[0]
+            print(e)
+
+    with open('TopNounsData.json', 'w') as output:
+        json.dump(lettersTopNouns, output)
+        output.close()
 
 def calTopNouns(OCR):
     collection = TextCollection(OCR)
@@ -162,11 +182,6 @@ def calTopNouns(OCR):
 
     tf = getTF(nouns, collection, OCR)
     idf = getIDF(nouns)
-
-    #for i in range(len(nouns)):
-    #    print nouns[i],
-    #    print tf[i],
-    #    print idf[i]
 
     maxNum = max(idf)
 
@@ -282,10 +297,6 @@ def calDataIDF():
             e = sys.exc_info()[0]
             print(e)
 
-    #texts = []
-    #for file in letterFiles:
-    #    texts.append(file.read())
-
     collection = TextCollection(texts)
 
     invalidOCR = open("invalidOCR.txt", "w")
@@ -333,15 +344,19 @@ def updateData():
     crawlDatabase()
     getOCRs()
     calDataIDF()
+    updateTopNouns()
 
 def main():
     #crawlDatabase()
     #getOCRs()
-    calDataIDF()
-    textFile = open("ocrList/rekl:10693.txt", 'r')
-    text = textFile.read()
+    #calDataIDF()
+    #textFile = open("ocrList/rekl:10693.txt", 'r')
+    #text = textFile.read()
 
-    print calTopNouns(text)
+    #print calTopNouns(text)
+
+    #updateTopNouns()
+    print getTopNouns("rekl:10693")
 
     return 0
 
