@@ -6,6 +6,7 @@ import sys
 import math
 from nltk.text import TextCollection
 from textblob import TextBlob
+from nltk.corpus import stopwords
 
 
 SEPARATORS = ['.', ',', ':', ';', '?', '!']
@@ -14,6 +15,8 @@ NOUNS_TAGS = ['NN', 'NNP', 'NNS', 'NNPS']
 FIRST_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&omitHeader=true&wt=json"
 SECOND_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=1000&omitHeader=true&wt=json"
 THIRD_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=2000&omitHeader=true&wt=json"
+
+TOP_NOUNS_NUM = 10
 
 def toSingular(word):
     newNoun = ""
@@ -157,7 +160,6 @@ def updateTopNouns():
 
     for letter in letters:
         try:
-            print letter[:-4]
             file = open('ocrList/' + letter, 'r')
             OCR = file.read()
             file.close()
@@ -165,6 +167,7 @@ def updateTopNouns():
             lettersTopNouns[letter[:-4]] = topNouns
 
         except:
+            print "Unable to parse OCR from " + letter
             e = sys.exc_info()[0]
             print(e)
 
@@ -177,7 +180,7 @@ def calTopNouns(OCR):
     phrases = getWords(OCR)
     nouns = getNoums(phrases)
 
-    if len(nouns) < 10:
+    if len(nouns) < TOP_NOUNS_NUM:
         return nouns
 
     tf = getTF(nouns, collection, OCR)
@@ -301,6 +304,8 @@ def calDataIDF():
 
     invalidOCR = open("invalidOCR.txt", "w")
 
+    stopWords = stopwords.words('english')
+
     i = 0
     for text in texts:
         try:
@@ -315,6 +320,11 @@ def calDataIDF():
                 total = len(blob.words)
                 for j in range(total):
                     word = blob.words[j]
+
+                    if str(word) in stopWords:
+                        print "Ignoring " + str(word)
+                        continue
+
                     if j == total - 1:
                         word = blob.words[j].singularize()
 
@@ -346,17 +356,27 @@ def updateData():
     calDataIDF()
     updateTopNouns()
 
+def printDemoData(rekl):
+    print "OCR:\n"
+    try:
+        file = open('ocrList/' + rekl + ".txt", 'r')
+        print file.read()
+        file.close()
+    except:
+        e = sys.exc_info()[0]
+        print(e)
+
+    print "\nTop Nouns:\n"
+
+    nouns = getTopNouns(rekl)
+    for i in range(TOP_NOUNS_NUM):
+        print "Noun #" + str(i + 1) + ": " + nouns[i]
+
 def main():
-    #crawlDatabase()
-    #getOCRs()
-    #calDataIDF()
-    #textFile = open("ocrList/rekl:10693.txt", 'r')
-    #text = textFile.read()
+    args = sys.argv
 
-    #print calTopNouns(text)
-
-    #updateTopNouns()
-    print getTopNouns("rekl:10693")
+    if len(args) > 1 and args[1] == '-r':
+        printDemoData("rekl:" + args[2])
 
     return 0
 
