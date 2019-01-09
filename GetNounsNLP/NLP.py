@@ -7,6 +7,7 @@ import math
 from nltk.text import TextCollection
 from textblob import TextBlob
 from nltk.corpus import stopwords
+import xml.etree.ElementTree as ET
 
 
 SEPARATORS = ['.', ',', ':', ';', '?', '!']
@@ -286,6 +287,63 @@ def getOCRs():
                 ocrFile.write(ocr)
                 ocrFile.close()
 
+def getDates():
+    dates = {}
+
+    with open("Children.txt") as f:
+        lines = [line.rstrip('\n') for line in f]
+
+        for line in lines:
+            pidValues = line.split(",")
+            xmlURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + pidValues[0] + "/datastream/MODS"
+            xmlRequest = urllib2.Request(xmlURL, headers={
+                "authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+
+            try:
+                xmlContent = urllib2.urlopen(xmlRequest)
+                if xmlContent.getcode() != 200:
+                    xmlContent.close()
+                    continue
+
+                print "\n" + pidValues[0] + ":"
+
+                xmlData = ET.fromstring(xmlContent.read())
+                xmlContent.close()
+
+                for i in range(len(xmlData)):
+                    if str(xmlData[i].tag) == "{http://www.loc.gov/mods/v3}originInfo":
+                        date = xmlData[i][0].text
+                        print date
+
+                        if date == None:
+                            break
+                        if "circa" in date:
+                            date = date[6:]
+
+                        date = date.split("-")
+
+                        if len(date) == 3:
+                            dateIndex = int(date[0]) * 10000 + int(date[1]) * 100 + int(date[2][:2])
+                        elif len(date) == 2:
+                            dateIndex = int(date[0]) * 10000 + int(date[1]) * 100
+                        else:
+                            dateIndex = int(date[0]) * 10000
+
+                        print dateIndex
+
+                        dates[pidValues[0]] = dateIndex
+                        break
+
+            except:
+                e = sys.exc_info()[0]
+                print(e)
+
+    sortedList = sorted(dates, key=dates.__getitem__)
+    for i in range(len(sortedList)):
+        sortedList[i] = (sortedList[i], dates[sortedList[i]])
+
+    print sortedList
+
 def calDataIDF():
     letters = os.listdir('./ocrList')
     wordIDF = {}
@@ -375,8 +433,17 @@ def printDemoData(rekl):
 def main():
     args = sys.argv
 
-    if len(args) > 1 and args[1] == '-r':
-        printDemoData("rekl:" + args[2])
+    if len(args) > 1:
+        if args[1] == '-r':
+            printDemoData(args[2])
+        if args[1] == '-u':
+            updateData()
+        if args[1] == '-d':
+            getDates()
+    else:
+        print "USAGE: -r prints the data about a specific letter"
+        print "       -u updates the data in the database"
+        print "       -d run debug function"
 
     return 0
 
