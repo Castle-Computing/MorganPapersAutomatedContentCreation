@@ -20,6 +20,15 @@ THIRD_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EX
 TOP_NOUNS_NUM = 10
 
 def toSingular(word):
+    """
+    Makes a noun singular. It can be a compounded noun.
+
+    Args:
+        word: a string containing the noun
+
+    Returns:
+         a string containing the new singular noun
+    """
     newNoun = ""
 
     blob = TextBlob(word)
@@ -124,6 +133,18 @@ def getStems(phrases):
     return stems
 
 def getTF(words, textCol, text):
+    """
+    Gets the term frequencies for a list of words.
+
+    Args:
+        words: a list of strings containing the words
+        textCol: a TextCollection object
+        text: the text from which the term frequency is determined
+
+    Returns:
+         a list containing the term frequency score for each word of the original list
+    """
+
     wordFreq = []
     for word in words:
         wordFreq.append(textCol.tf(word, text))
@@ -131,6 +152,16 @@ def getTF(words, textCol, text):
     return wordFreq
 
 def getIDF(words):
+    """
+    Gets the inverse document frequency score for a list of words.
+
+    Args:
+        words: a list of strings containing the words
+
+    Returns:
+         a list containing the inverse document frequency score for each word of the original list
+    """
+
     with open('IDFData.json') as dataFile:
 
         data = json.load(dataFile)
@@ -147,6 +178,16 @@ def getIDF(words):
     return wordIDF
 
 def getTopNouns(rekl):
+    """
+    Gets the tops nouns from a specific letter
+
+    Args:
+        rekl: a string containing the letter's identification rekl number
+
+    Returns:
+         a list containing the top nouns of the letter
+    """
+
     with open('TopNounsData.json') as dataFile:
         data = json.load(dataFile)
         if rekl in data:
@@ -156,6 +197,10 @@ def getTopNouns(rekl):
 
 
 def updateTopNouns():
+    """
+    Updates the json file containing the top nouns for each letter
+    """
+
     letters = os.listdir('./ocrList')
     lettersTopNouns = {}
 
@@ -177,6 +222,16 @@ def updateTopNouns():
         output.close()
 
 def calTopNouns(OCR):
+    """
+    Determines the top nouns of a letter
+
+    Args:
+        OCR: a string containing the contents of the letter
+
+    Returns:
+         a list containing the top nouns of the letter
+    """
+
     collection = TextCollection(OCR)
     phrases = getWords(OCR)
     nouns = getNoums(phrases)
@@ -222,6 +277,16 @@ def calTopNouns(OCR):
     return topNouns
 
 def crawlDatabase():
+    """
+    Determines the top nouns of a letter
+
+    Args:
+        OCR: a string containing the contents of the letter
+
+    Returns:
+         a list containing the top nouns of the letter
+    """
+
     firstRequest = urllib2.Request(FIRST_THOUSAND,
                                    headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
     firstResults = json.load(urllib2.urlopen(firstRequest))
@@ -305,7 +370,7 @@ def getDates():
                     xmlContent.close()
                     continue
 
-                print "\n" + pidValues[0] + ":"
+                print pidValues[0]
 
                 xmlData = ET.fromstring(xmlContent.read())
                 xmlContent.close()
@@ -313,7 +378,6 @@ def getDates():
                 for i in range(len(xmlData)):
                     if str(xmlData[i].tag) == "{http://www.loc.gov/mods/v3}originInfo":
                         date = xmlData[i][0].text
-                        print date
 
                         if date == None:
                             break
@@ -329,8 +393,6 @@ def getDates():
                         else:
                             dateIndex = int(date[0]) * 10000
 
-                        print dateIndex
-
                         dates[pidValues[0]] = dateIndex
                         break
 
@@ -338,11 +400,18 @@ def getDates():
                 e = sys.exc_info()[0]
                 print(e)
 
+    prevAndNext = {}
+
     sortedList = sorted(dates, key=dates.__getitem__)
     for i in range(len(sortedList)):
         sortedList[i] = (sortedList[i], dates[sortedList[i]])
 
-    print sortedList
+    for i in range(len(sortedList)):
+        prevAndNext[sortedList[i][0]] = (sortedList[i-1][0], sortedList[(i+1) % len(sortedList)][0])
+
+    with open('prevAndNext.json', 'w') as output:
+        json.dump(prevAndNext, output)
+        output.close()
 
 def calDataIDF():
     letters = os.listdir('./ocrList')
