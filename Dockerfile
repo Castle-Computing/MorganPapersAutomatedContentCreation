@@ -23,4 +23,4 @@ RUN python -m nltk.downloader averaged_perceptron_tagger
 COPY . .
 
 # Run the command on container startup
-CMD cron -f && python /usr/src/app/NLP.py -u
+CMD cron -f && python /usr/src/app/GetNounsNLP/NLP.py -u

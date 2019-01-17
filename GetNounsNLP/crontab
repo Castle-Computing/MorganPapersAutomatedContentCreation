@@ -1,2 +1,0 @@
-0 */3 * * * root python /usr/src/app/NLP.py -u >> /var/log/cron.log 2>&1
-# An empty line is required at the end of this file for a valid cron file.
