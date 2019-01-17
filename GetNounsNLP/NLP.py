@@ -478,8 +478,8 @@ def calDataIDF():
         output.close()
 
 def updateData():
-    crawlDatabase()
-    getOCRs()
+    #crawlDatabase()
+    #getOCRs()
     calDataIDF()
     updateTopNouns()
 
