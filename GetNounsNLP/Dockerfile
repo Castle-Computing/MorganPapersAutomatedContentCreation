@@ -6,10 +6,6 @@ RUN apt-get update && apt-get -y install cron
 # Add crontab file in the cron directory
 ADD crontab /etc/cron.d/simple-cron
 
-# Add shell script and grant execution rights
-ADD cronscript.sh /script.sh
-RUN chmod +x /script.sh
-
 # Create the log file to be able to run tail
 RUN touch /var/log/cron.log
 

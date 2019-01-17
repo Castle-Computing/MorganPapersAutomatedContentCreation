@@ -479,8 +479,8 @@ def calDataIDF():
         output.close()
 
 def updateData():
-    #crawlDatabase()
-    #getOCRs()
+    crawlDatabase()
+    getOCRs()
     calDataIDF()
     updateTopNouns()
 
@@ -501,6 +501,7 @@ def printDemoData(rekl):
         print "Noun #" + str(i + 1) + ": " + nouns[i]
 
 def main():
+    os.chdir(os.path.dirname(sys.argv[0]))
     args = sys.argv
 
     if len(args) > 1:
