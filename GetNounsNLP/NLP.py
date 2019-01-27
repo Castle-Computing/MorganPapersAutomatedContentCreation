@@ -5,6 +5,11 @@ import urllib2
 import sys
 import math
 from nltk.text import TextCollection
+from stanfordcorenlp import StanfordCoreNLP
+import subprocess
+import os
+import time
+import signal
 from textblob import TextBlob
 from nltk.corpus import stopwords
 import xml.etree.ElementTree as ET
@@ -12,12 +17,15 @@ import xml.etree.ElementTree as ET
 
 SEPARATORS = ['.', ',', ':', ';', '?', '!']
 NOUNS_TAGS = ['NN', 'NNP', 'NNS', 'NNPS']
+PROPER_NOUNS_TAGS = ['NNP', 'NNPS']
+NAME_NER_TAGS = ['PERSON']#['O', 'DATE','NUM', 'TIME', 'STATE_OR_PROVINCE', 'LOCATION']
 
 FIRST_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&omitHeader=true&wt=json"
 SECOND_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=1000&omitHeader=true&wt=json"
 THIRD_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=2000&omitHeader=true&wt=json"
 
 TOP_NOUNS_NUM = 10
+TELE_UPPER_RATIO = 0.8
 
 def toSingular(word):
     """
@@ -46,6 +54,35 @@ def toSingular(word):
 
     return newNoun
 
+def getNounsUsingStanford(text, posTags, nerMask, stfCore):
+    nouns = []
+
+    dataString = stfCore.annotate(text)
+    data = json.loads(str(dataString))
+
+    lastIndex = -2
+    index = 0
+    for wordData in data["sentences"][0]["tokens"]:
+        if 'pos' in wordData.keys() and 'ner' in wordData.keys():
+            if wordData['pos'] in posTags and wordData['ner'] in nerMask:
+                if 'truecaseText' in wordData.keys():
+                    if index == lastIndex + 1:
+                        nouns[-1] = nouns[-1] + ' ' + wordData['truecaseText']
+                    else:
+                        nouns.append(wordData['truecaseText'])
+                else:
+                    if index == lastIndex + 1:
+                        nouns[-1] = nouns[-1] + ' ' + wordData['text']
+                    else:
+                        nouns.append(wordData['text'])
+
+                lastIndex = index
+
+        index += 1
+
+    print nouns
+
+    return nouns
 
 def getWords(text):
     """
@@ -68,7 +105,7 @@ def getWords(text):
 
     return phrases
 
-def getNoums(phrases):
+def getNoums(phrases, tags):
     """
     gets a list of nouns from a 2D list created from getWords()
 
@@ -87,7 +124,7 @@ def getNoums(phrases):
 
         i = 0
         for word, tag in nltk.pos_tag(words):
-            if(tag in NOUNS_TAGS) and word.isalpha():
+            if(tag in tags) and word.isalpha():
                 sentanceNouns.append(word)
                 indexes.append(i)
 
@@ -234,7 +271,7 @@ def calTopNouns(OCR):
 
     collection = TextCollection(OCR)
     phrases = getWords(OCR)
-    nouns = getNoums(phrases)
+    nouns = getNoums(phrases, NOUNS_TAGS)
 
     if len(nouns) < TOP_NOUNS_NUM:
         return nouns
@@ -437,7 +474,7 @@ def calDataIDF():
     for text in texts:
         try:
             phrases = getWords(text)
-            nouns = getNoums(phrases)
+            nouns = getNoums(phrases, NOUNS_TAGS)
 
             for noun in nouns:
                 blob = TextBlob(noun)
@@ -477,11 +514,47 @@ def calDataIDF():
         json.dump(wordIDF, output)
         output.close()
 
+def getAllProperNouns():
+    letters = os.listdir('./ocrList')
+    lettersProperNouns = []
+
+    stfCore = StanfordCoreNLP('http://localhost', port=1000, timeout=5000)
+
+    for letter in letters:
+        try:
+            file = open('ocrList/' + letter, 'r')
+            OCR = file.read()
+            file.close()
+
+            properNouns = getNounsUsingStanford(OCR, PROPER_NOUNS_TAGS, NAME_NER_TAGS, stfCore)
+
+            for noun in properNouns:
+                if str(noun) not in lettersProperNouns:
+                    lettersProperNouns.append(str(noun))
+
+        except:
+            print "Unable to parse OCR from " + letter
+            e = sys.exc_info()[0]
+            print(e)
+
+    with open('properNounsData.txt', 'w') as output:
+
+        i = 0
+        for name in lettersProperNouns:
+            if i != 0:
+                output.write(", ")
+
+            output.write(str(name))
+            i += 1
+
+        output.close()
+
 def updateData():
     crawlDatabase()
     getOCRs()
     calDataIDF()
     updateTopNouns()
+    getDates()
 
 def printDemoData(rekl):
     print "OCR:\n"
@@ -499,6 +572,24 @@ def printDemoData(rekl):
     for i in range(TOP_NOUNS_NUM):
         print "Noun #" + str(i + 1) + ": " + nouns[i]
 
+def spinStanfordCore():
+    print "Starting Core"
+    pro = subprocess.Popen(['java', '-mx4g', '-cp', '../stanford-corenlp-full-2018-10-05/*',
+                      'edu.stanford.nlp.pipeline.StanfordCoreNLPServer', '-annotators',
+                      'tokenize,ssplit,truecase,pos,lemma,ner','-port', '1000', '-timeout', '5000',
+                      '-truecase.overwriteText'],
+                      stdout=subprocess.PIPE, preexec_fn=os.setsid)
+
+    print "Core started"
+    time.sleep(10)
+
+    return pro
+
+def stopStanfordCore(pro):
+    print "Stoping Core"
+    os.killpg(os.getpgid(pro.pid), signal.SIGTERM)
+    print "Core Stoped"
+
 def main():
     args = sys.argv
 
@@ -509,6 +600,10 @@ def main():
             updateData()
         if args[1] == '-d':
             getDates()
+        if args[1] == '-n':
+            pro = spinStanfordCore()
+            getAllProperNouns()
+            stopStanfordCore(pro)
     else:
         print "USAGE: -r prints the data about a specific letter"
         print "       -u updates the data in the database"
