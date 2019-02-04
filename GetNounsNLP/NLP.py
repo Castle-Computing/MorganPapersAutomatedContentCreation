@@ -24,6 +24,8 @@ FIRST_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EX
 SECOND_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=1000&omitHeader=true&wt=json"
 THIRD_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=2000&omitHeader=true&wt=json"
 
+OBJECTS_URL = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/(ancestors_ms:%22rekl:steilberg-ms180%22%20OR%20ancestors_ms:%22rekl:solon-ms106%22%20OR%20ancestors_ms:%22rekl:morgansteilberg-ms144%22%20OR%20ancestors_ms:%22rekl:boutelle-ms141%22%20OR%20ancestors_ms:%22rekl:morganboutelle-ms027%22)%20AND%20"
+
 TOP_NOUNS_NUM = 10
 TELE_UPPER_RATIO = 0.8
 
@@ -549,11 +551,77 @@ def getAllProperNouns():
 
         output.close()
 
+
+def linkLetters():
+
+    links = {}
+    with open('TopNounsData.json', 'r') as input:
+        topNouns = json.load(input)
+        input.close()
+
+    for k,v in topNouns.iteritems():
+        searchStr = "("
+
+        if len(v) == 0:
+            continue
+
+        for i in range(len(v)):
+            if i != 0:
+                searchStr += "%20OR%20"
+
+            searchStr += "(dc.title:" + v[i].replace(" ", "%20") + ")^" + str(10 - i)
+
+        searchStr += ")"
+
+        print OBJECTS_URL + searchStr
+        try:
+            data = urllib2.Request(OBJECTS_URL + searchStr,
+                        headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+
+            parsedData = json.load(urllib2.urlopen(data))
+
+        except:
+            print "Unable to get information for " + k
+            e = sys.exc_info()[0]
+            print(e)
+
+            links[k] = []
+
+            continue
+
+        info = {}
+        PIDS = []
+        titles = []
+
+        length = len(parsedData["response"]["docs"])
+
+        if length > 5:
+            length = 5
+
+        for j in range(length):
+            PIDS.append(parsedData["response"]["docs"][j]["PID"])
+            titles.append(parsedData["response"]["docs"][j]["fgs_label_s"])
+
+        print PIDS
+        print titles
+
+        info["suggestions"] = PIDS
+        info["titles"] = titles
+
+        links[k] = info
+
+    print links
+
+    with open('links.json', 'w') as output:
+        json.dump(links, output)
+        output.close()
+
 def updateData():
     crawlDatabase()
     getOCRs()
     calDataIDF()
     updateTopNouns()
+    linkLetters()
     getDates()
 
 def printDemoData(rekl):
@@ -599,7 +667,7 @@ def main():
         if args[1] == '-u':
             updateData()
         if args[1] == '-d':
-            getDates()
+            linkLetters()
         if args[1] == '-n':
             pro = spinStanfordCore()
             getAllProperNouns()
