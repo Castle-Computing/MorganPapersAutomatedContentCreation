@@ -20,7 +20,7 @@ def deleteAndReUpload(session, pid, dsid, content):
     base_url = 'https://digital.lib.calpoly.edu/islandora/rest/v1/object/' + pid + '/datastream'
     delete_url = base_url + "/" + dsid
 
-    delete_response = session.delete(delete_url, headers={'User-Agent': 'PythonScript', "accept": "application/json"})
+    delete_response = session.delete(delete_url)
     print("Deleting with " + delete_url + " returned code: " + str(delete_response.status_code))
     
     multipartFormData = MultipartEncoder(
