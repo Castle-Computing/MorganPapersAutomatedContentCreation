@@ -4,7 +4,7 @@ from Uploader import authenticate, deleteAndReUpload
 
 session = authenticate()
 
-with open('Content/links.json') as file:
+with open('../Content/links.json') as file:
     data = json.load(file)
     dsid = 'RELATED_OBJECTS'
     

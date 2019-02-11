@@ -3,11 +3,12 @@ from Uploader import authenticate, deleteAndReUpload
 
 session = authenticate()
 
-ocrFiles = os.listdir("ocr")
+directoryLoc = "../Content/ocr"
+ocrFiles = os.listdir(directoryLoc)
 dsid = "OCR_BOOK"
 
 for file in ocrFiles:
-    path = os.path.join('ocr', file)
+    path = os.path.join(directoryLoc, file)
     content = open(path, 'rb')
     pid = file.strip('.txt')
     
