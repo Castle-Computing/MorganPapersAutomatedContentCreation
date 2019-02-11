@@ -3,13 +3,6 @@ import urllib2
 from datetime import datetime
 
 
-class ReklDate:
-    def __init__(self, pid, day, month):
-        months = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
-        self.index = months[month - 1] + (day - 1)
-        self.pid = pid
-
-
 def get_objects():
     first_thousand = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&omitHeader=true&wt=json"
     second_thousand = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=1000&omitHeader=true&wt=json"
@@ -35,24 +28,32 @@ def get_objects():
 
 # Make dictionary of dates and list of letters for that day
 def by_day(docs):
-    oid_by_date = {}
+    num_done = 1
+    months = [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335]
+    data = {}
     for doc in docs:
-        parentPID = doc["PID"]
+        num_done = num_done + 1
+        if num_done%100 == 0:
+            print num_done
+        PID = doc["PID"]
+        title_r = urllib2.Request("https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + PID,
+                                    headers = {"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+        title = json.load(urllib2.urlopen(title_r))["label"]
         try:
             date = doc["mods_originInfo_dateCreated_s"]
             # Parse date to get month and day
             # Only display if correct format
-            parsed_date = datetime.strptime(date, "%Y-%m-%d")
-            new_object = ReklDate(parentPID, parsed_date.day, parsed_date.month)
-            DC = doc["fedora_datastreams_ms"]
-            if "TN" in DC:
-                if oid_by_date.has_key(new_object.index):
-                    oid_by_date[new_object.index].append(new_object.pid)
-                else:
-                    oid_by_date[new_object.index] = [new_object.pid]
+            pd = datetime.strptime(date, "%Y-%m-%d")
         except:
-            print(parentPID + ",NONE")
-    return oid_by_date
+            continue
+        index = months[pd.month - 1] + (pd.day - 1)
+        DC = doc["fedora_datastreams_ms"]
+        if "TN" in DC:
+            if data.has_key(index):
+                data[index].append({"PID": PID, "title": title})
+            else:
+                data[index] = [{"PID": PID, "title": title}]
+    return data
 
 
 # Write to file
@@ -72,6 +73,7 @@ def write_to_file(pid_by_date):
 
 if __name__ == '__main__':
     oid_docs = get_objects()
-    oid_by_date = by_day(oid_docs)
-    write_to_file(oid_by_date)
+    data = by_day(oid_docs)
+    with open('LetterDates.json', 'w') as outfile:
+        json.dump(data, outfile, indent = 4)
     exit()
