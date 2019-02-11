@@ -1,8 +1,9 @@
 import os
+import sys
+sys.path.append(os.path.abspath("/usr/local/lib/python2.7/site-packages"))
 import nltk
 import json
 import urllib2
-import sys
 import math
 from nltk.text import TextCollection
 from textblob import TextBlob
@@ -500,6 +501,7 @@ def printDemoData(rekl):
         print "Noun #" + str(i + 1) + ": " + nouns[i]
 
 def main():
+    os.chdir(os.path.dirname(sys.argv[0]))
     args = sys.argv
 
     if len(args) > 1:
