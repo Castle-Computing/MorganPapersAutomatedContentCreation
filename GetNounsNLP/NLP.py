@@ -56,33 +56,42 @@ def toSingular(word):
 
     return newNoun
 
-def getNounsUsingStanford(text, posTags, nerMask, stfCore):
+def getNounsUsingStanford(stfCore, text, posTags, nerMask=None, trueCase=False, join=False):
     nouns = []
 
     dataString = stfCore.annotate(text)
-    data = json.loads(str(dataString))
+    try:
+        data = json.loads(str(dataString))
+    except(UnicodeEncodeError):
+        print "Could not parse letter!"
+        return None
+
 
     lastIndex = -2
     index = 0
+
+    if len(data["sentences"]) == 0:
+        return nouns
+
     for wordData in data["sentences"][0]["tokens"]:
         if 'pos' in wordData.keys() and 'ner' in wordData.keys():
-            if wordData['pos'] in posTags and wordData['ner'] in nerMask:
-                if 'truecaseText' in wordData.keys():
-                    if index == lastIndex + 1:
-                        nouns[-1] = nouns[-1] + ' ' + wordData['truecaseText']
-                    else:
-                        nouns.append(wordData['truecaseText'])
+            if wordData['pos'] in posTags and (nerMask is None or wordData['ner'] in nerMask):
+                if 'truecaseText' in wordData.keys() and trueCase:
+                    tag = 'truecaseText'
+                elif 'text' in wordData.keys():
+                    tag = 'text'
                 else:
-                    if index == lastIndex + 1:
-                        nouns[-1] = nouns[-1] + ' ' + wordData['text']
-                    else:
-                        nouns.append(wordData['text'])
+                    tag = 'word'
 
-                lastIndex = index
+                if(wordData[tag].isalpha()):
+                    if index == lastIndex + 1 and join:
+                        nouns[-1] = nouns[-1] + ' ' + str(wordData[tag])
+                    else:
+                        nouns.append(str(wordData[tag]))
+
+                    lastIndex = index
 
         index += 1
-
-    print nouns
 
     return nouns
 
@@ -106,6 +115,23 @@ def getWords(text):
         phrases.append(nltk.word_tokenize(sentance))
 
     return phrases
+
+def isItTele(phrases):
+
+    count = 0
+    upper = 0
+
+    for phrase in phrases:
+        for word in phrase:
+            count += 1
+
+            if word.isupper():
+                upper +=1
+
+    if count * 0.7 <= upper:
+        return True
+
+    return False
 
 def getNoums(phrases, tags):
     """
@@ -235,7 +261,7 @@ def getTopNouns(rekl):
             print "No letter with " + rekl + " of database!"
 
 
-def updateTopNouns():
+def updateTopNouns(stfCore):
     """
     Updates the json file containing the top nouns for each letter
     """
@@ -243,12 +269,14 @@ def updateTopNouns():
     letters = os.listdir('./ocrList')
     lettersTopNouns = {}
 
+    stopWords = stopwords.words('english')
+
     for letter in letters:
         try:
             file = open('ocrList/' + letter, 'r')
             OCR = file.read()
             file.close()
-            topNouns = calTopNouns(OCR)
+            topNouns = calTopNouns(OCR, stfCore, stopWords)
             lettersTopNouns[letter[:-4]] = topNouns
 
         except:
@@ -260,7 +288,7 @@ def updateTopNouns():
         json.dump(lettersTopNouns, output)
         output.close()
 
-def calTopNouns(OCR):
+def calTopNouns(OCR, stfCore, stopWords):
     """
     Determines the top nouns of a letter
 
@@ -273,7 +301,16 @@ def calTopNouns(OCR):
 
     collection = TextCollection(OCR)
     phrases = getWords(OCR)
-    nouns = getNoums(phrases, NOUNS_TAGS)
+
+    if (not isItTele(phrases)):
+        print "Not telem!"
+        nouns = getNoums(phrases, NOUNS_TAGS)
+
+    else:
+        nouns = getNounsUsingStanford(stfCore, OCR, NOUNS_TAGS)
+
+        if nouns is None:
+            nouns = getNoums(phrases, NOUNS_TAGS)
 
     if len(nouns) < TOP_NOUNS_NUM:
         return nouns
@@ -452,7 +489,7 @@ def getDates():
         json.dump(prevAndNext, output)
         output.close()
 
-def calDataIDF():
+def calDataIDF(stfCore):
     letters = os.listdir('./ocrList')
     wordIDF = {}
 
@@ -476,7 +513,15 @@ def calDataIDF():
     for text in texts:
         try:
             phrases = getWords(text)
-            nouns = getNoums(phrases, NOUNS_TAGS)
+
+            if(not isItTele(phrases)):
+                nouns = getNoums(phrases, NOUNS_TAGS)
+
+            else:
+                nouns = getNounsUsingStanford(stfCore, text, NOUNS_TAGS)
+
+                if nouns is None:
+                    nouns = getNoums(phrases, NOUNS_TAGS)
 
             for noun in nouns:
                 blob = TextBlob(noun)
@@ -528,7 +573,8 @@ def getAllProperNouns():
             OCR = file.read()
             file.close()
 
-            properNouns = getNounsUsingStanford(OCR, PROPER_NOUNS_TAGS, NAME_NER_TAGS, stfCore)
+            properNouns = getNounsUsingStanford(stfCore, OCR, PROPER_NOUNS_TAGS,
+                                                nerMask=NAME_NER_TAGS, trueCase=True, join=True)
 
             for noun in properNouns:
                 if str(noun) not in lettersProperNouns:
@@ -602,26 +648,63 @@ def linkLetters():
             PIDS.append(parsedData["response"]["docs"][j]["PID"])
             titles.append(parsedData["response"]["docs"][j]["fgs_label_s"])
 
-        print PIDS
-        print titles
-
         info["suggestions"] = PIDS
         info["titles"] = titles
 
         links[k] = info
 
-    print links
+    info = {}
+    info["suggestions"] = []
+    info["titles"] = []
+
+    with open("Children.txt") as f:
+        lines = [line.rstrip('\n') for line in f]
+        for line in lines:
+            pidValues = line.split(",")
+
+            if pidValues[0] not in links.keys():
+                links[pidValues[0]] = info
+
+        f.close()
+
 
     with open('links.json', 'w') as output:
         json.dump(links, output)
         output.close()
 
 def updateData():
+    print"---------------------------------------------------------------"
+    print "Crawling Islandora Database"
+    print"---------------------------------------------------------------"
     crawlDatabase()
+
+    print"---------------------------------------------------------------"
+    print "Getting all OCRs"
+    print"---------------------------------------------------------------"
     getOCRs()
-    calDataIDF()
-    updateTopNouns()
+
+    print"---------------------------------------------------------------"
+    print "Calculating all IDFs"
+    print"---------------------------------------------------------------"
+    pro = spinStanfordCore(1010)
+    stfCore = StanfordCoreNLP('http://localhost', port=1010, timeout=5000)
+    calDataIDF(stfCore)
+
+    print"---------------------------------------------------------------"
+    print "Getting all Top Nouns"
+    print"---------------------------------------------------------------"
+    updateTopNouns(stfCore)
+    stopStanfordCore(pro)
+
+    print"---------------------------------------------------------------"
+    print "Linking Letters to Other Objects"
+    print"---------------------------------------------------------------"
     linkLetters()
+
+
+    print"---------------------------------------------------------------"
+    print "Getting Previous and Next Letters"
+    print"---------------------------------------------------------------"
     getDates()
 
 def printDemoData(rekl):
@@ -640,11 +723,11 @@ def printDemoData(rekl):
     for i in range(TOP_NOUNS_NUM):
         print "Noun #" + str(i + 1) + ": " + nouns[i]
 
-def spinStanfordCore():
+def spinStanfordCore(port):
     print "Starting Core"
     pro = subprocess.Popen(['java', '-mx4g', '-cp', '../stanford-corenlp-full-2018-10-05/*',
                       'edu.stanford.nlp.pipeline.StanfordCoreNLPServer', '-annotators',
-                      'tokenize,ssplit,truecase,pos,lemma,ner','-port', '1000', '-timeout', '5000',
+                      'tokenize,ssplit,truecase,pos,lemma,ner','-port', str(port), '-timeout', '5000',
                       '-truecase.overwriteText'],
                       stdout=subprocess.PIPE, preexec_fn=os.setsid)
 
@@ -669,7 +752,7 @@ def main():
         if args[1] == '-d':
             linkLetters()
         if args[1] == '-n':
-            pro = spinStanfordCore()
+            pro = spinStanfordCore(1000)
             getAllProperNouns()
             stopStanfordCore(pro)
     else:
