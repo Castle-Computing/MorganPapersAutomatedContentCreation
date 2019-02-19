@@ -6,6 +6,11 @@ import json
 import urllib2
 import math
 from nltk.text import TextCollection
+from stanfordcorenlp import StanfordCoreNLP
+import subprocess
+import os
+import time
+import signal
 from textblob import TextBlob
 from nltk.corpus import stopwords
 import xml.etree.ElementTree as ET
@@ -13,12 +18,17 @@ import xml.etree.ElementTree as ET
 
 SEPARATORS = ['.', ',', ':', ';', '?', '!']
 NOUNS_TAGS = ['NN', 'NNP', 'NNS', 'NNPS']
+PROPER_NOUNS_TAGS = ['NNP', 'NNPS']
+NAME_NER_TAGS = ['PERSON']#['O', 'DATE','NUM', 'TIME', 'STATE_OR_PROVINCE', 'LOCATION']
 
 FIRST_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&omitHeader=true&wt=json"
 SECOND_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=1000&omitHeader=true&wt=json"
 THIRD_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=2000&omitHeader=true&wt=json"
 
+OBJECTS_URL = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/(ancestors_ms:%22rekl:steilberg-ms180%22%20OR%20ancestors_ms:%22rekl:solon-ms106%22%20OR%20ancestors_ms:%22rekl:morgansteilberg-ms144%22%20OR%20ancestors_ms:%22rekl:boutelle-ms141%22%20OR%20ancestors_ms:%22rekl:morganboutelle-ms027%22)%20AND%20"
+
 TOP_NOUNS_NUM = 10
+TELE_UPPER_RATIO = 0.8
 
 def toSingular(word):
     """
@@ -47,6 +57,44 @@ def toSingular(word):
 
     return newNoun
 
+def getNounsUsingStanford(stfCore, text, posTags, nerMask=None, trueCase=False, join=False):
+    nouns = []
+
+    dataString = stfCore.annotate(text)
+    try:
+        data = json.loads(str(dataString))
+    except(UnicodeEncodeError):
+        print "Could not parse letter!"
+        return None
+
+
+    lastIndex = -2
+    index = 0
+
+    if len(data["sentences"]) == 0:
+        return nouns
+
+    for wordData in data["sentences"][0]["tokens"]:
+        if 'pos' in wordData.keys() and 'ner' in wordData.keys():
+            if wordData['pos'] in posTags and (nerMask is None or wordData['ner'] in nerMask):
+                if 'truecaseText' in wordData.keys() and trueCase:
+                    tag = 'truecaseText'
+                elif 'text' in wordData.keys():
+                    tag = 'text'
+                else:
+                    tag = 'word'
+
+                if(wordData[tag].isalpha()):
+                    if index == lastIndex + 1 and join:
+                        nouns[-1] = nouns[-1] + ' ' + str(wordData[tag])
+                    else:
+                        nouns.append(str(wordData[tag]))
+
+                    lastIndex = index
+
+        index += 1
+
+    return nouns
 
 def getWords(text):
     """
@@ -69,7 +117,24 @@ def getWords(text):
 
     return phrases
 
-def getNoums(phrases):
+def isItTele(phrases):
+
+    count = 0
+    upper = 0
+
+    for phrase in phrases:
+        for word in phrase:
+            count += 1
+
+            if word.isupper():
+                upper +=1
+
+    if count * 0.7 <= upper:
+        return True
+
+    return False
+
+def getNoums(phrases, tags):
     """
     gets a list of nouns from a 2D list created from getWords()
 
@@ -88,7 +153,7 @@ def getNoums(phrases):
 
         i = 0
         for word, tag in nltk.pos_tag(words):
-            if(tag in NOUNS_TAGS) and word.isalpha():
+            if(tag in tags) and word.isalpha():
                 sentanceNouns.append(word)
                 indexes.append(i)
 
@@ -197,7 +262,7 @@ def getTopNouns(rekl):
             print "No letter with " + rekl + " of database!"
 
 
-def updateTopNouns():
+def updateTopNouns(stfCore):
     """
     Updates the json file containing the top nouns for each letter
     """
@@ -205,12 +270,14 @@ def updateTopNouns():
     letters = os.listdir('./ocrList')
     lettersTopNouns = {}
 
+    stopWords = stopwords.words('english')
+
     for letter in letters:
         try:
             file = open('ocrList/' + letter, 'r')
             OCR = file.read()
             file.close()
-            topNouns = calTopNouns(OCR)
+            topNouns = calTopNouns(OCR, stfCore, stopWords)
             lettersTopNouns[letter[:-4]] = topNouns
 
         except:
@@ -222,7 +289,7 @@ def updateTopNouns():
         json.dump(lettersTopNouns, output)
         output.close()
 
-def calTopNouns(OCR):
+def calTopNouns(OCR, stfCore, stopWords):
     """
     Determines the top nouns of a letter
 
@@ -235,7 +302,16 @@ def calTopNouns(OCR):
 
     collection = TextCollection(OCR)
     phrases = getWords(OCR)
-    nouns = getNoums(phrases)
+
+    if (not isItTele(phrases)):
+        print "Not telem!"
+        nouns = getNoums(phrases, NOUNS_TAGS)
+
+    else:
+        nouns = getNounsUsingStanford(stfCore, OCR, NOUNS_TAGS)
+
+        if nouns is None:
+            nouns = getNoums(phrases, NOUNS_TAGS)
 
     if len(nouns) < TOP_NOUNS_NUM:
         return nouns
@@ -414,7 +490,7 @@ def getDates():
         json.dump(prevAndNext, output)
         output.close()
 
-def calDataIDF():
+def calDataIDF(stfCore):
     letters = os.listdir('./ocrList')
     wordIDF = {}
 
@@ -438,7 +514,15 @@ def calDataIDF():
     for text in texts:
         try:
             phrases = getWords(text)
-            nouns = getNoums(phrases)
+
+            if(not isItTele(phrases)):
+                nouns = getNoums(phrases, NOUNS_TAGS)
+
+            else:
+                nouns = getNounsUsingStanford(stfCore, text, NOUNS_TAGS)
+
+                if nouns is None:
+                    nouns = getNoums(phrases, NOUNS_TAGS)
 
             for noun in nouns:
                 blob = TextBlob(noun)
@@ -478,11 +562,151 @@ def calDataIDF():
         json.dump(wordIDF, output)
         output.close()
 
+def getAllProperNouns():
+    letters = os.listdir('./ocrList')
+    lettersProperNouns = []
+
+    stfCore = StanfordCoreNLP('http://localhost', port=1000, timeout=5000)
+
+    for letter in letters:
+        try:
+            file = open('ocrList/' + letter, 'r')
+            OCR = file.read()
+            file.close()
+
+            properNouns = getNounsUsingStanford(stfCore, OCR, PROPER_NOUNS_TAGS,
+                                                nerMask=NAME_NER_TAGS, trueCase=True, join=True)
+
+            for noun in properNouns:
+                if str(noun) not in lettersProperNouns:
+                    lettersProperNouns.append(str(noun))
+
+        except:
+            print "Unable to parse OCR from " + letter
+            e = sys.exc_info()[0]
+            print(e)
+
+    with open('properNounsData.txt', 'w') as output:
+
+        i = 0
+        for name in lettersProperNouns:
+            if i != 0:
+                output.write(", ")
+
+            output.write(str(name))
+            i += 1
+
+        output.close()
+
+
+def linkLetters():
+
+    links = {}
+    with open('TopNounsData.json', 'r') as input:
+        topNouns = json.load(input)
+        input.close()
+
+    for k,v in topNouns.iteritems():
+        searchStr = "("
+
+        if len(v) == 0:
+            continue
+
+        for i in range(len(v)):
+            if i != 0:
+                searchStr += "%20OR%20"
+
+            searchStr += "(dc.title:" + v[i].replace(" ", "%20") + ")^" + str(10 - i)
+
+        searchStr += ")"
+
+        print OBJECTS_URL + searchStr
+        try:
+            data = urllib2.Request(OBJECTS_URL + searchStr,
+                        headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+
+            parsedData = json.load(urllib2.urlopen(data))
+
+        except:
+            print "Unable to get information for " + k
+            e = sys.exc_info()[0]
+            print(e)
+
+            links[k] = []
+
+            continue
+
+        info = {}
+        PIDS = []
+        titles = []
+
+        length = len(parsedData["response"]["docs"])
+
+        if length > 5:
+            length = 5
+
+        for j in range(length):
+            PIDS.append(parsedData["response"]["docs"][j]["PID"])
+            titles.append(parsedData["response"]["docs"][j]["fgs_label_s"])
+
+        info["suggestions"] = PIDS
+        info["titles"] = titles
+
+        links[k] = info
+
+    info = {}
+    info["suggestions"] = []
+    info["titles"] = []
+
+    with open("Children.txt") as f:
+        lines = [line.rstrip('\n') for line in f]
+        for line in lines:
+            pidValues = line.split(",")
+
+            if pidValues[0] not in links.keys():
+                links[pidValues[0]] = info
+
+        f.close()
+
+
+    with open('links.json', 'w') as output:
+        json.dump(links, output)
+        output.close()
+
 def updateData():
+    print"---------------------------------------------------------------"
+    print "Crawling Islandora Database"
+    print"---------------------------------------------------------------"
     crawlDatabase()
+
+    print"---------------------------------------------------------------"
+    print "Getting all OCRs"
+    print"---------------------------------------------------------------"
     getOCRs()
-    calDataIDF()
-    updateTopNouns()
+
+    print"---------------------------------------------------------------"
+    print "Calculating all IDFs"
+    print"---------------------------------------------------------------"
+    pro = spinStanfordCore(1010)
+    stfCore = StanfordCoreNLP('http://localhost', port=1010, timeout=5000)
+    calDataIDF(stfCore)
+
+    print"---------------------------------------------------------------"
+    print "Getting all Top Nouns"
+    print"---------------------------------------------------------------"
+    updateTopNouns(stfCore)
+    stopStanfordCore(pro)
+
+    print"---------------------------------------------------------------"
+    print "Linking Letters to Other Objects"
+    print"---------------------------------------------------------------"
+    linkLetters()
+
+
+    print"---------------------------------------------------------------"
+    print "Getting Previous and Next Letters"
+    print"---------------------------------------------------------------"
+    getDates()
 
 def printDemoData(rekl):
     print "OCR:\n"
@@ -500,6 +724,24 @@ def printDemoData(rekl):
     for i in range(TOP_NOUNS_NUM):
         print "Noun #" + str(i + 1) + ": " + nouns[i]
 
+def spinStanfordCore(port):
+    print "Starting Core"
+    pro = subprocess.Popen(['java', '-mx4g', '-cp', '../stanford-corenlp-full-2018-10-05/*',
+                      'edu.stanford.nlp.pipeline.StanfordCoreNLPServer', '-annotators',
+                      'tokenize,ssplit,truecase,pos,lemma,ner','-port', str(port), '-timeout', '5000',
+                      '-truecase.overwriteText'],
+                      stdout=subprocess.PIPE, preexec_fn=os.setsid)
+
+    print "Core started"
+    time.sleep(10)
+
+    return pro
+
+def stopStanfordCore(pro):
+    print "Stoping Core"
+    os.killpg(os.getpgid(pro.pid), signal.SIGTERM)
+    print "Core Stoped"
+
 def main():
     os.chdir(os.path.dirname(sys.argv[0]))
     args = sys.argv
@@ -510,7 +752,11 @@ def main():
         if args[1] == '-u':
             updateData()
         if args[1] == '-d':
-            getDates()
+            linkLetters()
+        if args[1] == '-n':
+            pro = spinStanfordCore(1000)
+            getAllProperNouns()
+            stopStanfordCore(pro)
     else:
         print "USAGE: -r prints the data about a specific letter"
         print "       -u updates the data in the database"
