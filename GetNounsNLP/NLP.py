@@ -1,8 +1,9 @@
 import os
+import sys
+sys.path.append(os.path.abspath("/usr/local/lib/python2.7/site-packages"))
 import nltk
 import json
 import urllib2
-import sys
 import math
 from nltk.text import TextCollection
 from stanfordcorenlp import StanfordCoreNLP
@@ -739,6 +740,7 @@ def stopStanfordCore(pro):
     print "Core Stoped"
 
 def main():
+    os.chdir(os.path.dirname(sys.argv[0]))
     args = sys.argv
 
     if len(args) > 1:
