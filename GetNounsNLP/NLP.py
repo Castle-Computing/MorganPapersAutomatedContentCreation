@@ -24,6 +24,8 @@ FIRST_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EX
 SECOND_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=1000&omitHeader=true&wt=json"
 THIRD_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=2000&omitHeader=true&wt=json"
 
+URLS_LIST = [FIRST_THOUSAND, SECOND_THOUSAND, THIRD_THOUSAND]
+
 OBJECTS_URL = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/(ancestors_ms:%22rekl:steilberg-ms180%22%20OR%20ancestors_ms:%22rekl:solon-ms106%22%20OR%20ancestors_ms:%22rekl:morgansteilberg-ms144%22%20OR%20ancestors_ms:%22rekl:boutelle-ms141%22%20OR%20ancestors_ms:%22rekl:morganboutelle-ms027%22)%20AND%20"
 
 TOP_NOUNS_NUM = 10
@@ -362,41 +364,36 @@ def crawlDatabase():
     Returns:
          a list containing the top nouns of the letter
     """
+    childrenFile = open("Children.txt", "w")
 
-    firstRequest = urllib2.Request(FIRST_THOUSAND,
-                                   headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
-    firstResults = json.load(urllib2.urlopen(firstRequest))
+    for url in URLS_LIST:
+        request = urllib2.Request(url,
+                        headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+        results = json.load(urllib2.urlopen(request))
+        docs = results["response"]["docs"]
 
-    secondRequest = urllib2.Request(SECOND_THOUSAND,
-                                    headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
-    secondResults = json.load(urllib2.urlopen(secondRequest))
+        for doc in docs:
+            parentPID = doc["PID"]
+            childrenURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/ancestors_ms:%22" + parentPID + "%22%20?rows=100&omitHeader=true&wt=json"
+            childRequest = urllib2.Request(childrenURL,
+                                           headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+            childResults = json.load(urllib2.urlopen(childRequest))
+            childDocs = childResults["response"]["docs"]
+            childPids = list()
 
-    thirdRequest = urllib2.Request(THIRD_THOUSAND,
-                                   headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
-    thirdResults = json.load(urllib2.urlopen(thirdRequest))
+            for childDoc in childDocs:
+                childPID = childDoc["PID"]
+                childPids.append(childPID)
 
-    docs = firstResults["response"]["docs"]
-    docs.extend(secondResults["response"]["docs"])
-    docs.extend(thirdResults["response"]["docs"])
+            childPids.sort()
 
-    for doc in docs:
-        parentPID = doc["PID"]
-        childrenURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/ancestors_ms:%22" + parentPID + "%22%20?rows=100&omitHeader=true&wt=json"
-        childRequest = urllib2.Request(childrenURL,
-                                       headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
-        childResults = json.load(urllib2.urlopen(childRequest))
-        childDocs = childResults["response"]["docs"]
-        childPids = list()
+            pids = ",".join(childPids)
 
-        for childDoc in childDocs:
-            childPID = childDoc["PID"]
-            childPids.append(childPID)
+            childrenFile.write(parentPID + "," + pids + '\n')
 
-        childPids.sort()
+            print(parentPID + "," + pids)
 
-        pids = ",".join(childPids)
-
-        print(parentPID + "," + pids)
+    childrenFile.close()
 
 def getOCRs():
 

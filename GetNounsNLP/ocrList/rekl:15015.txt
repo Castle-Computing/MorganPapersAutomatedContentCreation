@@ -1,43 +1,26 @@
-. 
-
-Lmdel Farm
-
- 
-
-3‘1  C
-
-can Simeon, odlifornia.
-
-Poesible Iteme to Include
-
-1. Jersey Cow barn and shed. L
-
+Model Farm
+San Simeon, California.
+Possible Items to Include
+1. Jersey Cow barn and shed.
 2. Saddle horses
-Saddle Room
-
-3. an barn
+    Saddle Room
+3. Hay Barn
 4. Silos
-
-5. Shed nor trucks, plows, certs
-Blacksmith shop r
-
-0. Water tank
-
+5. Shed for trucks, plows, carts
+    Blacksmith shop
+6. Water tank
 7. A. Chicken house & runs
-B. Feed room
-0. Seed & bulb room
-D. Peaking shed & drying racks
+    B. Feed room
+    C. Seed & bulb room
+    D. Packing shed & drying racks
+8. A. Nursery & seed beds
+    B. Vegetable garden
+9. Dog Kennels
+10. Housing - 
+    A. Superintendent
+    B. Head gardener
+    C. Orchardist
+    D. 6 to 10 laborers
 
-8._ A. Nursery & seed beds
-B. Vegetable garden
-
-9. Dog Kennels .‘
-
-10. Housing ~
-A. Superintendent
-3. Head gardener} .
-C. Oreherdist *
-D. 6'to lO leborers_ '
-
- 
-
+[handwritten]
+[1925]
