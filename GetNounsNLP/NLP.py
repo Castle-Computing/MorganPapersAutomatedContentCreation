@@ -305,7 +305,7 @@ def calTopNouns(OCR, stfCore, stopWords):
     collection = TextCollection(OCR)
     phrases = getWords(OCR)
 
-    if (not isItTele(phrases)):
+    if ((not isItTele(phrases)) or stfCore is None):
         print "Not telem!"
         nouns = getNoums(phrases, NOUNS_TAGS)
 
@@ -512,7 +512,7 @@ def calDataIDF(stfCore):
         try:
             phrases = getWords(text)
 
-            if(not isItTele(phrases)):
+            if((not isItTele(phrases)) or stfCore is None):
                 nouns = getNoums(phrases, NOUNS_TAGS)
 
             else:
@@ -684,15 +684,16 @@ def updateData():
     print"---------------------------------------------------------------"
     print "Calculating all IDFs"
     print"---------------------------------------------------------------"
-    pro = spinStanfordCore(1010)
-    stfCore = StanfordCoreNLP('http://localhost', port=1010, timeout=5000)
+    #pro = spinStanfordCore(1010)
+    #stfCore = StanfordCoreNLP('http://localhost', port=1010, timeout=5000)
+    stfCore = None
     calDataIDF(stfCore)
 
     print"---------------------------------------------------------------"
     print "Getting all Top Nouns"
     print"---------------------------------------------------------------"
     updateTopNouns(stfCore)
-    stopStanfordCore(pro)
+    #stopStanfordCore(pro)
 
     print"---------------------------------------------------------------"
     print "Linking Letters to Other Objects"
