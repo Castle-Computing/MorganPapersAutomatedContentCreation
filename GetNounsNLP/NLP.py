@@ -670,21 +670,21 @@ def linkLetters():
         json.dump(links, output)
         output.close()
 
-def updateData():
+def updateData(path):
     print"---------------------------------------------------------------"
     print "Crawling Islandora Database"
     print"---------------------------------------------------------------"
-    crawlDatabase()
+    #crawlDatabase()
 
     print"---------------------------------------------------------------"
     print "Getting all OCRs"
     print"---------------------------------------------------------------"
-    getOCRs()
+    #getOCRs()
 
     print"---------------------------------------------------------------"
     print "Calculating all IDFs"
     print"---------------------------------------------------------------"
-    pro = spinStanfordCore(1010)
+    pro = spinStanfordCore(1010, path)
     stfCore = StanfordCoreNLP('http://localhost', port=1010, timeout=5000)
     #stfCore = None
     calDataIDF(stfCore)
@@ -722,9 +722,11 @@ def printDemoData(rekl):
     for i in range(TOP_NOUNS_NUM):
         print "Noun #" + str(i + 1) + ": " + nouns[i]
 
-def spinStanfordCore(port):
+def spinStanfordCore(port, path):
     print "Starting Core"
-    pro = subprocess.Popen(['java', '-mx500m', '-cp', '../stanford-corenlp/*',
+    path = path[:-6]
+    print path + '../stanford-corenlp/*'
+    pro = subprocess.Popen(['java', '-mx500m', '-cp', path + '../stanford-corenlp/*',
                       'edu.stanford.nlp.pipeline.StanfordCoreNLPServer', '-annotators',
                       'pos','-port', str(port), '-timeout', '5000'],#,
                       #'-truecase.overwriteText'],
@@ -748,7 +750,7 @@ def main():
         if args[1] == '-r':
             printDemoData(args[2])
         if args[1] == '-u':
-            updateData()
+            updateData(sys.argv[0])
         if args[1] == '-d':
             linkLetters()
         if args[1] == '-n':
