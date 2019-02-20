@@ -77,7 +77,7 @@ def getNounsUsingStanford(stfCore, text, posTags, nerMask=None, trueCase=False, 
         return nouns
 
     for wordData in data["sentences"][0]["tokens"]:
-        if 'pos' in wordData.keys() and 'ner' in wordData.keys():
+        if 'pos' in wordData.keys():
             if wordData['pos'] in posTags and (nerMask is None or wordData['ner'] in nerMask):
                 if 'truecaseText' in wordData.keys() and trueCase:
                     tag = 'truecaseText'
@@ -305,7 +305,7 @@ def calTopNouns(OCR, stfCore, stopWords):
     collection = TextCollection(OCR)
     phrases = getWords(OCR)
 
-    if (not isItTele(phrases)):
+    if ((not isItTele(phrases)) or stfCore is None):
         print "Not telem!"
         nouns = getNoums(phrases, NOUNS_TAGS)
 
@@ -512,7 +512,7 @@ def calDataIDF(stfCore):
         try:
             phrases = getWords(text)
 
-            if(not isItTele(phrases)):
+            if((not isItTele(phrases)) or stfCore is None):
                 nouns = getNoums(phrases, NOUNS_TAGS)
 
             else:
@@ -674,18 +674,19 @@ def updateData():
     print"---------------------------------------------------------------"
     print "Crawling Islandora Database"
     print"---------------------------------------------------------------"
-    crawlDatabase()
+    #crawlDatabase()
 
     print"---------------------------------------------------------------"
     print "Getting all OCRs"
     print"---------------------------------------------------------------"
-    getOCRs()
+    #getOCRs()
 
     print"---------------------------------------------------------------"
     print "Calculating all IDFs"
     print"---------------------------------------------------------------"
     pro = spinStanfordCore(1010)
     stfCore = StanfordCoreNLP('http://localhost', port=1010, timeout=5000)
+    #stfCore = None
     calDataIDF(stfCore)
 
     print"---------------------------------------------------------------"
@@ -723,10 +724,10 @@ def printDemoData(rekl):
 
 def spinStanfordCore(port):
     print "Starting Core"
-    pro = subprocess.Popen(['java', '-mx4g', '-cp', '../stanford-corenlp-full-2018-10-05/*',
+    pro = subprocess.Popen(['java', '-mx500m', '-cp', '../stanford-corenlp/*',
                       'edu.stanford.nlp.pipeline.StanfordCoreNLPServer', '-annotators',
-                      'tokenize,ssplit,truecase,pos,lemma,ner','-port', str(port), '-timeout', '5000',
-                      '-truecase.overwriteText'],
+                      'pos','-port', str(port), '-timeout', '5000'],#,
+                      #'-truecase.overwriteText'],
                       stdout=subprocess.PIPE, preexec_fn=os.setsid)
 
     print "Core started"
