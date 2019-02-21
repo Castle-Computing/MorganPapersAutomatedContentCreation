@@ -156,8 +156,11 @@ RUN python -m nltk.downloader punkt
 RUN python -m nltk.downloader stopwords
 RUN python -m nltk.downloader averaged_perceptron_tagger
 
-RUN wget http://nlp.stanford.edu/software/stanford-corenlp-full-2018-10-05.zip \
-    && mkdir stanford-corenlp && unzip stanford-corenlp-full-2018-10-05.zip -d stanford-corenlp
+RUN wget http://nlp.stanford.edu/software/stanford-corenlp-full-2018-10-05.zip
+
+RUN mkdir stanford-corenlp && unzip stanford-corenlp-full-2018-10-05.zip \
+	&& mv stanford-corenlp-full-2018-10-05/* stanford-corenlp/ \
+	&& rmdir stanford-corenlp-full-2018-10-05
 
 COPY . .
 
