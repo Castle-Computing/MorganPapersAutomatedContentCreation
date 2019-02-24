@@ -269,14 +269,14 @@ def updateTopNouns(stfCore):
     Updates the json file containing the top nouns for each letter
     """
 
-    letters = os.listdir('./ocrList')
+    letters = os.listdir('../Content/ocr')
     lettersTopNouns = {}
 
     stopWords = stopwords.words('english')
 
     for letter in letters:
         try:
-            file = open('ocrList/' + letter, 'r')
+            file = open('../Content/ocr/' + letter, 'r')
             OCR = file.read()
             file.close()
             topNouns = calTopNouns(OCR, stfCore, stopWords)
@@ -287,7 +287,7 @@ def updateTopNouns(stfCore):
             e = sys.exc_info()[0]
             print(e)
 
-    with open('TopNounsData.json', 'w') as output:
+    with open('../Content/TopNounsData.json', 'w') as output:
         json.dump(lettersTopNouns, output)
         output.close()
 
@@ -365,19 +365,17 @@ def crawlDatabase():
     Returns:
          a list containing the top nouns of the letter
     """
-    childrenFile = open("Children.txt", "w")
+    childrenFile = open("../Content/Children.txt", "w")
 
     for url in URLS_LIST:
-        request = urllib2.Request(url,
-                        headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+        request = urllib2.Request(url)
         results = json.load(urllib2.urlopen(request))
         docs = results["response"]["docs"]
 
         for doc in docs:
             parentPID = doc["PID"]
             childrenURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/ancestors_ms:%22" + parentPID + "%22%20?rows=100&omitHeader=true&wt=json"
-            childRequest = urllib2.Request(childrenURL,
-                                           headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+            childRequest = urllib2.Request(childrenURL)
             childResults = json.load(urllib2.urlopen(childRequest))
             childDocs = childResults["response"]["docs"]
             childPids = list()
@@ -398,7 +396,7 @@ def crawlDatabase():
 
 def getOCRs():
 
-    with open("Children.txt") as f:
+    with open("../Content/Children.txt") as f:
         lines = [line.rstrip('\n') for line in f]
         for line in lines:
             pidValues = line.split(",")
@@ -409,8 +407,7 @@ def getOCRs():
 
             while len(pidValues) > 0:
                 ocrURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + pidValues.pop() + "/datastream/OCR"
-                ocrRequest = urllib2.Request(ocrURL, headers={
-                    "authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+                ocrRequest = urllib2.Request(ocrURL)
                 try:
                     ocrContent = urllib2.urlopen(ocrRequest)
                     if ocrContent.getcode() == 200:
@@ -422,21 +419,20 @@ def getOCRs():
                     print(e)
 
             if len(ocr) > 0:
-                ocrFile = open("ocrList/" + parentPID + ".txt", "w+")
+                ocrFile = open("../Content/ocr/" + parentPID + ".txt", "w+")
                 ocrFile.write(ocr)
                 ocrFile.close()
 
 def getDates():
     dates = {}
 
-    with open("Children.txt") as f:
+    with open("../Content/Children.txt") as f:
         lines = [line.rstrip('\n') for line in f]
 
         for line in lines:
             pidValues = line.split(",")
             xmlURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + pidValues[0] + "/datastream/MODS"
-            xmlRequest = urllib2.Request(xmlURL, headers={
-                "authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+            xmlRequest = urllib2.Request(xmlURL)
 
             try:
                 xmlContent = urllib2.urlopen(xmlRequest)
@@ -483,18 +479,18 @@ def getDates():
     for i in range(len(sortedList)):
         prevAndNext[sortedList[i][0]] = (sortedList[i-1][0], sortedList[(i+1) % len(sortedList)][0])
 
-    with open('prevAndNext.json', 'w') as output:
+    with open('../Content/PrevAndNext.json', 'w') as output:
         json.dump(prevAndNext, output)
         output.close()
 
 def calDataIDF(stfCore):
-    letters = os.listdir('./ocrList')
+    letters = os.listdir('../Content/ocr')
     wordIDF = {}
 
     texts = []
     for letter in letters:
         try:
-            file = open('ocrList/' + letter, 'r')
+            file = open('../Content/ocr/' + letter, 'r')
             texts.append(file.read())
             file.close()
         except:
@@ -503,7 +499,7 @@ def calDataIDF(stfCore):
 
     collection = TextCollection(texts)
 
-    invalidOCR = open("invalidOCR.txt", "w")
+    invalidOCR = open("../Content/invalidOCR.txt", "w")
 
     stopWords = stopwords.words('english')
 
@@ -560,14 +556,14 @@ def calDataIDF(stfCore):
         output.close()
 
 def getAllProperNouns():
-    letters = os.listdir('./ocrList')
+    letters = os.listdir('../Content/ocr')
     lettersProperNouns = []
 
     stfCore = StanfordCoreNLP('http://localhost', port=1000, timeout=5000)
 
     for letter in letters:
         try:
-            file = open('ocrList/' + letter, 'r')
+            file = open('../Content/ocr/' + letter, 'r')
             OCR = file.read()
             file.close()
 
@@ -619,8 +615,7 @@ def linkLetters():
 
         print OBJECTS_URL + searchStr
         try:
-            data = urllib2.Request(OBJECTS_URL + searchStr,
-                        headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+            data = urllib2.Request(OBJECTS_URL + searchStr)
 
             parsedData = json.load(urllib2.urlopen(data))
 
@@ -655,7 +650,7 @@ def linkLetters():
     info["suggestions"] = []
     info["titles"] = []
 
-    with open("Children.txt") as f:
+    with open("../Content/Children.txt") as f:
         lines = [line.rstrip('\n') for line in f]
         for line in lines:
             pidValues = line.split(",")
@@ -666,7 +661,7 @@ def linkLetters():
         f.close()
 
 
-    with open('links.json', 'w') as output:
+    with open('../Content/links.json', 'w') as output:
         json.dump(links, output)
         output.close()
 
@@ -674,12 +669,12 @@ def updateData(path):
     print"---------------------------------------------------------------"
     print "Crawling Islandora Database"
     print"---------------------------------------------------------------"
-    #crawlDatabase()
+    crawlDatabase()
 
     print"---------------------------------------------------------------"
     print "Getting all OCRs"
     print"---------------------------------------------------------------"
-    #getOCRs()
+    getOCRs()
 
     print"---------------------------------------------------------------"
     print "Calculating all IDFs"
@@ -709,7 +704,7 @@ def updateData(path):
 def printDemoData(rekl):
     print "OCR:\n"
     try:
-        file = open('ocrList/' + rekl + ".txt", 'r')
+        file = open('../Content/ocr/' + rekl + ".txt", 'r')
         print file.read()
         file.close()
     except:

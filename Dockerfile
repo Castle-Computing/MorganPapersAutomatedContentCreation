@@ -160,7 +160,8 @@ RUN wget http://nlp.stanford.edu/software/stanford-corenlp-full-2018-10-05.zip
 
 RUN mkdir stanford-corenlp && unzip stanford-corenlp-full-2018-10-05.zip \
 	&& mv stanford-corenlp-full-2018-10-05/* stanford-corenlp/ \
-	&& rmdir stanford-corenlp-full-2018-10-05
+	&& rmdir stanford-corenlp-full-2018-10-05 \
+	&& rm stanford-corenlp-full-2018-10-05.zip
 
 COPY . .
 
