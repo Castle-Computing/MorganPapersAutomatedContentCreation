@@ -276,6 +276,7 @@ def updateTopNouns(stfCore):
 
     for letter in letters:
         try:
+            print letter
             file = open('../Content/ocr/' + letter, 'r')
             OCR = file.read()
             file.close()
@@ -511,6 +512,8 @@ def calDataIDF(stfCore):
     i = 0
     for text in texts:
         try:
+            print letters[i][:-4]
+
             phrases = getWords(text)
 
             if((not isItTele(phrases)) or stfCore is None):
@@ -725,7 +728,6 @@ def printDemoData(rekl):
 def spinStanfordCore(port, path):
     print "Starting Core"
     path = path[:-6]
-    print path + '../stanford-corenlp/*'
     pro = subprocess.Popen(['java', '-mx500m', '-cp', path + '../stanford-corenlp/*',
                       'edu.stanford.nlp.pipeline.StanfordCoreNLPServer', '-annotators',
                       'pos','-port', str(port), '-timeout', '5000'],#,
