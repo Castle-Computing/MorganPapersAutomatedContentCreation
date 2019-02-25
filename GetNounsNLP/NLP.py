@@ -406,8 +406,12 @@ def getOCRs():
             ocr = ""
 
             while len(pidValues) > 0:
-                ocrURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + pidValues.pop() + "/datastream/OCR"
-                ocrRequest = urllib2.Request(ocrURL)
+                currentPID = pidValues.pop()
+                if len(currentPID) < 1:
+                    continue
+                
+                ocrURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + currentPID + "/datastream/OCR"
+                ocrRequest = urllib2.Request(ocrURL, headers = {"User-Agent": "MorganApp/1.0"})
                 try:
                     ocrContent = urllib2.urlopen(ocrRequest)
                     if ocrContent.getcode() == 200:
@@ -416,7 +420,8 @@ def getOCRs():
                     ocrContent.close()
                 except:
                     e = sys.exc_info()[0]
-                    print(e)
+                    print(str(e))
+                    print("\n")
 
             if len(ocr) > 0:
                 ocrFile = open("../Content/ocr/" + parentPID + ".txt", "w+")
@@ -669,7 +674,7 @@ def updateData(path):
     print"---------------------------------------------------------------"
     print "Crawling Islandora Database"
     print"---------------------------------------------------------------"
-    crawlDatabase()
+    #crawlDatabase()
 
     print"---------------------------------------------------------------"
     print "Getting all OCRs"
