@@ -10,11 +10,13 @@ from stanfordcorenlp import StanfordCoreNLP
 import subprocess
 import os
 import time
+import timeout_decorator
 import signal
 from textblob import TextBlob
 from nltk.corpus import stopwords
 import xml.etree.ElementTree as ET
 
+PORT = 1010
 
 SEPARATORS = ['.', ',', ':', ';', '?', '!']
 NOUNS_TAGS = ['NN', 'NNP', 'NNS', 'NNPS']
@@ -59,10 +61,18 @@ def toSingular(word):
 
     return newNoun
 
+@timeout_decorator.timeout(6)
 def getNounsUsingStanford(stfCore, text, posTags, nerMask=None, trueCase=False, join=False):
     nouns = []
 
+    #text = text.encode('utf-8')
+
+    #r = requests.post('http://localhost:1010', params={'properties': str(None)}, data=text,
+    #                  headers={'Connection': 'close'}, timeout=500)
+
     dataString = stfCore.annotate(text)
+    #dataString = r.text
+
     try:
         data = json.loads(str(dataString))
     except(UnicodeEncodeError):
@@ -264,7 +274,7 @@ def getTopNouns(rekl):
             print "No letter with " + rekl + " of database!"
 
 
-def updateTopNouns(stfCore):
+def updateTopNouns(stfCore, pro, path):
     """
     Updates the json file containing the top nouns for each letter
     """
@@ -272,7 +282,7 @@ def updateTopNouns(stfCore):
     letters = os.listdir('./ocrList')
     lettersTopNouns = {}
 
-    stopWords = stopwords.words('english')
+    #stopWords = stopwords.words('english')
 
     for letter in letters:
         try:
@@ -280,7 +290,14 @@ def updateTopNouns(stfCore):
             file = open('ocrList/' + letter, 'r')
             OCR = file.read()
             file.close()
-            topNouns = calTopNouns(OCR, stfCore, stopWords)
+            try:
+                topNouns = calTopNouns(OCR, stfCore)
+            except(timeout_decorator.timeout_decorator.TimeoutError):
+                print "Timeout!"
+                stopStanfordCore(pro)
+                pro = spinStanfordCore(PORT, path)
+                topNouns = calTopNouns(OCR, stfCore)
+
             lettersTopNouns[letter[:-4]] = topNouns
 
         except:
@@ -292,7 +309,9 @@ def updateTopNouns(stfCore):
         json.dump(lettersTopNouns, output)
         output.close()
 
-def calTopNouns(OCR, stfCore, stopWords):
+    return pro
+
+def calTopNouns(OCR, stfCore):
     """
     Determines the top nouns of a letter
 
@@ -307,7 +326,6 @@ def calTopNouns(OCR, stfCore, stopWords):
     phrases = getWords(OCR)
 
     if ((not isItTele(phrases)) or stfCore is None):
-        print "Not telem!"
         nouns = getNoums(phrases, NOUNS_TAGS)
 
     else:
@@ -488,7 +506,7 @@ def getDates():
         json.dump(prevAndNext, output)
         output.close()
 
-def calDataIDF(stfCore):
+def calDataIDF(stfCore, pro, path):
     letters = os.listdir('./ocrList')
     wordIDF = {}
 
@@ -519,7 +537,13 @@ def calDataIDF(stfCore):
                 nouns = getNoums(phrases, NOUNS_TAGS)
 
             else:
-                nouns = getNounsUsingStanford(stfCore, text, NOUNS_TAGS)
+                try:
+                    nouns = getNounsUsingStanford(stfCore, text, NOUNS_TAGS)
+                except(timeout_decorator.timeout_decorator.TimeoutError):
+                    print "Timeout on " + letters[i][:-4]
+                    stopStanfordCore(pro)
+                    pro = spinStanfordCore(PORT, path)
+                    nouns = getNounsUsingStanford(stfCore, text, NOUNS_TAGS)
 
                 if nouns is None:
                     nouns = getNoums(phrases, NOUNS_TAGS)
@@ -562,19 +586,29 @@ def calDataIDF(stfCore):
         json.dump(wordIDF, output)
         output.close()
 
-def getAllProperNouns():
+    return pro
+
+def getAllProperNouns(pro, path):
     letters = os.listdir('./ocrList')
     lettersProperNouns = []
 
-    stfCore = StanfordCoreNLP('http://localhost', port=1000, timeout=5000)
+    stfCore = StanfordCoreNLP('http://localhost', port=1000, timeout=500)
 
     for letter in letters:
         try:
+            print letter
             file = open('ocrList/' + letter, 'r')
             OCR = file.read()
             file.close()
 
-            properNouns = getNounsUsingStanford(stfCore, OCR, PROPER_NOUNS_TAGS,
+            try:
+                properNouns = getNounsUsingStanford(stfCore, OCR, PROPER_NOUNS_TAGS,
+                                                nerMask=NAME_NER_TAGS, trueCase=True, join=True)
+            except(timeout_decorator.timeout_decorator.TimeoutError):
+                print "Timeout on " + letter
+                stopStanfordCore(pro)
+                pro = spinStanfordCore(PORT, path)
+                properNouns = getNounsUsingStanford(stfCore, OCR, PROPER_NOUNS_TAGS,
                                                 nerMask=NAME_NER_TAGS, trueCase=True, join=True)
 
             for noun in properNouns:
@@ -598,6 +632,7 @@ def getAllProperNouns():
 
         output.close()
 
+    return pro
 
 def linkLetters():
 
@@ -620,7 +655,8 @@ def linkLetters():
 
         searchStr += ")"
 
-        print OBJECTS_URL + searchStr
+        print k
+        #print OBJECTS_URL + searchStr
         try:
             data = urllib2.Request(OBJECTS_URL + searchStr,
                         headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
@@ -687,15 +723,15 @@ def updateData(path):
     print"---------------------------------------------------------------"
     print "Calculating all IDFs"
     print"---------------------------------------------------------------"
-    pro = spinStanfordCore(1010, path)
-    stfCore = StanfordCoreNLP('http://localhost', port=1010, timeout=5000)
+    pro = spinStanfordCore(PORT, path)
+    stfCore = StanfordCoreNLP('http://localhost', port=PORT, timeout=5000)
     #stfCore = None
-    calDataIDF(stfCore)
+    pro = calDataIDF(stfCore, pro, path)
 
     print"---------------------------------------------------------------"
-    print "Getting all Top Nouns"
+    print"Getting all Top Nouns"
     print"---------------------------------------------------------------"
-    updateTopNouns(stfCore)
+    pro = updateTopNouns(stfCore, pro, path)
     stopStanfordCore(pro)
 
     print"---------------------------------------------------------------"
@@ -730,7 +766,7 @@ def spinStanfordCore(port, path):
     path = path[:-6]
     pro = subprocess.Popen(['java', '-mx500m', '-cp', path + '../stanford-corenlp/*',
                       'edu.stanford.nlp.pipeline.StanfordCoreNLPServer', '-annotators',
-                      'pos','-port', str(port), '-timeout', '5000'],#,
+                      'tokenize,ssplit,pos','-port', str(port), '-timeout', '5000'],#,
                       #'-truecase.overwriteText'],
                       stdout=subprocess.PIPE, preexec_fn=os.setsid)
 
@@ -742,6 +778,7 @@ def spinStanfordCore(port, path):
 def stopStanfordCore(pro):
     print "Stoping Core"
     os.killpg(os.getpgid(pro.pid), signal.SIGTERM)
+    time.sleep(5)
     print "Core Stoped"
 
 def main():
@@ -756,8 +793,8 @@ def main():
         if args[1] == '-d':
             linkLetters()
         if args[1] == '-n':
-            pro = spinStanfordCore(1000)
-            getAllProperNouns()
+            pro = spinStanfordCore(1000, sys.argv[0])
+            pro = getAllProperNouns(pro, sys.argv[0])
             stopStanfordCore(pro)
     else:
         print "USAGE: -r prints the data about a specific letter"
