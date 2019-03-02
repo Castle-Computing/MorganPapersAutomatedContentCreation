@@ -23,12 +23,6 @@ NOUNS_TAGS = ['NN', 'NNP', 'NNS', 'NNPS']
 PROPER_NOUNS_TAGS = ['NNP', 'NNPS']
 NAME_NER_TAGS = ['PERSON']#['O', 'DATE','NUM', 'TIME', 'STATE_OR_PROVINCE', 'LOCATION']
 
-FIRST_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&omitHeader=true&wt=json"
-SECOND_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=1000&omitHeader=true&wt=json"
-THIRD_THOUSAND = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/RELS_EXT_hasModel_uri_ms:%22info:fedora/islandora:bookCModel%22%20AND%20ancestors_ms:%22rekl:morgan-ms010%22?rows=1000&start=2000&omitHeader=true&wt=json"
-
-URLS_LIST = [FIRST_THOUSAND, SECOND_THOUSAND, THIRD_THOUSAND]
-
 OBJECTS_URL = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/(ancestors_ms:%22rekl:steilberg-ms180%22%20OR%20ancestors_ms:%22rekl:solon-ms106%22%20OR%20ancestors_ms:%22rekl:morgansteilberg-ms144%22%20OR%20ancestors_ms:%22rekl:boutelle-ms141%22%20OR%20ancestors_ms:%22rekl:morganboutelle-ms027%22)%20AND%20"
 
 TOP_NOUNS_NUM = 10
@@ -38,11 +32,11 @@ def toSingular(word):
     """
     Makes a noun singular. It can be a compounded noun.
 
-    Args:
-        word: a string containing the noun
+    :arg:
+        word (str): a string containing the noun
 
-    Returns:
-         a string containing the new singular noun
+    :returns:
+         str: a string containing the new singular noun
     """
     newNoun = ""
 
@@ -63,15 +57,24 @@ def toSingular(word):
 
 @timeout_decorator.timeout(6)
 def getNounsUsingStanford(stfCore, text, posTags, nerMask=None, trueCase=False, join=False):
+    """
+    Gets a list of nouns in a text using Stanford Core
+
+    :arg:
+        stfCore (object): a stanford core object
+        text (str): the text to be parsed
+        posTags (list): a list of tags that the function looks for and adds to list to be returned
+        nerMask (list): (Optional) a list of NER tags that the function looks for and adds to list to be returned
+        trueCase (bool): whether it should return the true case format or the original word
+        join (bool): whether it should join nouns together into compounded nouns
+
+    :returns:
+        list: a list containing a list of nouns
+    """
+
     nouns = []
 
-    #text = text.encode('utf-8')
-
-    #r = requests.post('http://localhost:1010', params={'properties': str(None)}, data=text,
-    #                  headers={'Connection': 'close'}, timeout=500)
-
     dataString = stfCore.annotate(text)
-    #dataString = r.text
 
     try:
         data = json.loads(str(dataString))
@@ -112,15 +115,16 @@ def getWords(text):
     """
     Gets a 2D list of the words in a text string
 
-    Args:
-        text: a string to be parsed
+    :arg:
+        text (str): a string to be parsed
 
-    Returns:
-        a list of the of the following structure:
-        "Hello World! Goodbye Cruel World!"
-        becomes:
-        [["Hello", "World", "!"], ["Goodbye", "Cruel", "World", "!"]]
+    :returns:
+        list: a list of the of the following structure:
+            "Hello World! Goodbye Cruel World!"
+            becomes:
+            [["Hello", "World", "!"], ["Goodbye", "Cruel", "World", "!"]]
     """
+
     sentances = nltk.sent_tokenize(text)
     phrases = []
 
@@ -130,6 +134,15 @@ def getWords(text):
     return phrases
 
 def isItTele(phrases):
+    """
+    Returns whether a OCR is a telegram or not
+
+    :arg:
+        phrases (list): A 2D list containing words
+
+    :returns:
+        bool: whether the OCR is a telegram or not
+    """
 
     count = 0
     upper = 0
@@ -214,13 +227,13 @@ def getTF(words, textCol, text):
     """
     Gets the term frequencies for a list of words.
 
-    Args:
-        words: a list of strings containing the words
-        textCol: a TextCollection object
-        text: the text from which the term frequency is determined
+    :arg:
+        words (list): a 1D list of strings containing the words
+        textCol (object): a TextCollection object
+        text (str): the text from which the term frequency is determined
 
-    Returns:
-         a list containing the term frequency score for each word of the original list
+    :returns:
+         list: containing the term frequency score for each word of the original list
     """
 
     wordFreq = []
@@ -233,11 +246,11 @@ def getIDF(words):
     """
     Gets the inverse document frequency score for a list of words.
 
-    Args:
-        words: a list of strings containing the words
+    :arg:
+        words (list): a list of strings containing the words
 
-    Returns:
-         a list containing the inverse document frequency score for each word of the original list
+    :returns:
+         list: containing the inverse document frequency score for each word of the original list
     """
 
     with open('IDFData.json') as dataFile:
@@ -259,11 +272,11 @@ def getTopNouns(rekl):
     """
     Gets the tops nouns from a specific letter
 
-    Args:
-        rekl: a string containing the letter's identification rekl number
+    :arg:
+        rekl (str): a string containing the letter's identification rekl number
 
-    Returns:
-         a list containing the top nouns of the letter
+    :returns:
+         list: containing the top nouns of the letter
     """
 
     with open('TopNounsData.json') as dataFile:
@@ -276,10 +289,18 @@ def getTopNouns(rekl):
 
 def updateTopNouns(stfCore, pro, path):
     """
-    Updates the json file containing the top nouns for each letter
+    Updates the json file containing the top nouns for each letter. I can restart the Stanford Core in case of error.
+
+    :arg:
+        stfCore (object): a Stanford Core object
+        pro (object): a object that points to the Stanford Core process
+        path (str): a sting containing the path to this script
+
+    :returns:
+         object: a object that points to the Stanford Core process
     """
 
-    letters = os.listdir('./ocrList')
+    letters = os.listdir('../Content/ocr')
     lettersTopNouns = {}
 
     #stopWords = stopwords.words('english')
@@ -287,11 +308,13 @@ def updateTopNouns(stfCore, pro, path):
     for letter in letters:
         try:
             print letter
-            file = open('ocrList/' + letter, 'r')
+            file = open('../Content/ocr/' + letter, 'r')
             OCR = file.read()
             file.close()
             try:
                 topNouns = calTopNouns(OCR, stfCore)
+
+            #Janky stuff here.
             except(timeout_decorator.timeout_decorator.TimeoutError):
                 print "Timeout!"
                 stopStanfordCore(pro)
@@ -315,11 +338,12 @@ def calTopNouns(OCR, stfCore):
     """
     Determines the top nouns of a letter
 
-    Args:
-        OCR: a string containing the contents of the letter
+    :arg:
+        OCR (str): a string containing the contents of the letter
+        stfCore (object): a Stanford Core object
 
-    Returns:
-         a list containing the top nouns of the letter
+    :returns:
+         list: containing the top nouns of the letter
     """
 
     collection = TextCollection(OCR)
@@ -374,81 +398,14 @@ def calTopNouns(OCR, stfCore):
 
     return topNouns
 
-def crawlDatabase():
-    """
-    Determines the top nouns of a letter
-
-    Args:
-        OCR: a string containing the contents of the letter
-
-    Returns:
-         a list containing the top nouns of the letter
-    """
-    childrenFile = open("Children.txt", "w")
-
-    for url in URLS_LIST:
-        request = urllib2.Request(url,
-                        headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
-        results = json.load(urllib2.urlopen(request))
-        docs = results["response"]["docs"]
-
-        for doc in docs:
-            parentPID = doc["PID"]
-            childrenURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/solr/ancestors_ms:%22" + parentPID + "%22%20?rows=100&omitHeader=true&wt=json"
-            childRequest = urllib2.Request(childrenURL,
-                                           headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
-            childResults = json.load(urllib2.urlopen(childRequest))
-            childDocs = childResults["response"]["docs"]
-            childPids = list()
-
-            for childDoc in childDocs:
-                childPID = childDoc["PID"]
-                childPids.append(childPID)
-
-            childPids.sort()
-
-            pids = ",".join(childPids)
-
-            childrenFile.write(parentPID + "," + pids + '\n')
-
-            print(parentPID + "," + pids)
-
-    childrenFile.close()
-
-def getOCRs():
-
-    with open("Children.txt") as f:
-        lines = [line.rstrip('\n') for line in f]
-        for line in lines:
-            pidValues = line.split(",")
-            pidValues.reverse()
-
-            parentPID = pidValues.pop()
-            ocr = ""
-
-            while len(pidValues) > 0:
-                ocrURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + pidValues.pop() + "/datastream/OCR"
-                ocrRequest = urllib2.Request(ocrURL, headers={
-                    "authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
-                try:
-                    ocrContent = urllib2.urlopen(ocrRequest)
-                    if ocrContent.getcode() == 200:
-                        ocr = ocr + ocrContent.read()
-
-                    ocrContent.close()
-                except:
-                    e = sys.exc_info()[0]
-                    print(e)
-
-            if len(ocr) > 0:
-                ocrFile = open("ocrList/" + parentPID + ".txt", "w+")
-                ocrFile.write(ocr)
-                ocrFile.close()
-
 def getDates():
+    """
+    Gets the previous and next letters for each letter. It saves the information on the prevAndNext.json file
+    """
+
     dates = {}
 
-    with open("Children.txt") as f:
+    with open("../Content/Children.txt") as f:
         lines = [line.rstrip('\n') for line in f]
 
         for line in lines:
@@ -502,18 +459,30 @@ def getDates():
     for i in range(len(sortedList)):
         prevAndNext[sortedList[i][0]] = (sortedList[i-1][0], sortedList[(i+1) % len(sortedList)][0])
 
-    with open('prevAndNext.json', 'w') as output:
+    with open('../Content/prevAndNext.json', 'w') as output:
         json.dump(prevAndNext, output)
         output.close()
 
 def calDataIDF(stfCore, pro, path):
-    letters = os.listdir('./ocrList')
+    """
+    Calculates the IDF score for every noun in each letter and saves the information to IDFData.json
+
+    :arg:
+        stfCore (object): a Stanford Core object
+        pro (object): a object that points to the Stanford Core process
+        path (str): a sting containing the path to this script
+
+    :returns:
+         object: a object that points to the Stanford Core process
+    """
+
+    letters = os.listdir('../Content/ocr')
     wordIDF = {}
 
     texts = []
     for letter in letters:
         try:
-            file = open('ocrList/' + letter, 'r')
+            file = open('../Content/ocr/' + letter, 'r')
             texts.append(file.read())
             file.close()
         except:
@@ -522,7 +491,7 @@ def calDataIDF(stfCore, pro, path):
 
     collection = TextCollection(texts)
 
-    invalidOCR = open("invalidOCR.txt", "w")
+    invalidOCR = open("../Content/invalidOCR.txt", "w")
 
     stopWords = stopwords.words('english')
 
@@ -589,7 +558,18 @@ def calDataIDF(stfCore, pro, path):
     return pro
 
 def getAllProperNouns(pro, path):
-    letters = os.listdir('./ocrList')
+    """
+    Gets a list of all the proper nouns on the database and saves the information to properNounsData.txt
+
+    :arg:
+        pro (object): a object that points to the Stanford Core process
+        path (str): a sting containing the path to this script
+
+    :returns:
+         object: a object that points to the Stanford Core process
+    """
+
+    letters = os.listdir('../Content/ocr')
     lettersProperNouns = []
 
     stfCore = StanfordCoreNLP('http://localhost', port=1000, timeout=500)
@@ -597,7 +577,7 @@ def getAllProperNouns(pro, path):
     for letter in letters:
         try:
             print letter
-            file = open('ocrList/' + letter, 'r')
+            file = open('../Content/ocr/' + letter, 'r')
             OCR = file.read()
             file.close()
 
@@ -620,7 +600,7 @@ def getAllProperNouns(pro, path):
             e = sys.exc_info()[0]
             print(e)
 
-    with open('properNounsData.txt', 'w') as output:
+    with open('../Content/properNounsData.txt', 'w') as output:
 
         i = 0
         for name in lettersProperNouns:
@@ -635,6 +615,9 @@ def getAllProperNouns(pro, path):
     return pro
 
 def linkLetters():
+    """
+    Creates the links.json file which links the letters to other related content.
+    """
 
     links = {}
     with open('TopNounsData.json', 'r') as input:
@@ -657,6 +640,7 @@ def linkLetters():
 
         print k
         #print OBJECTS_URL + searchStr
+
         try:
             data = urllib2.Request(OBJECTS_URL + searchStr,
                         headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
@@ -694,7 +678,7 @@ def linkLetters():
     info["suggestions"] = []
     info["titles"] = []
 
-    with open("Children.txt") as f:
+    with open("../Content/Children.txt") as f:
         lines = [line.rstrip('\n') for line in f]
         for line in lines:
             pidValues = line.split(",")
@@ -705,34 +689,38 @@ def linkLetters():
         f.close()
 
 
-    with open('links.json', 'w') as output:
+    with open('../Content/links.json', 'w') as output:
         json.dump(links, output)
         output.close()
 
-def updateData(path):
-    print"---------------------------------------------------------------"
-    print "Crawling Islandora Database"
-    print"---------------------------------------------------------------"
-    #crawlDatabase()
+def updateData(path, stf=True):
+    """
+    Runs the NLP functions in the correct order.
 
-    print"---------------------------------------------------------------"
-    print "Getting all OCRs"
-    print"---------------------------------------------------------------"
-    #getOCRs()
+    :arg:
+        path (str): a sting containing the path to this script
+        stf (bool): whether the script should use Stanford Core or not
+
+    """
 
     print"---------------------------------------------------------------"
     print "Calculating all IDFs"
     print"---------------------------------------------------------------"
-    pro = spinStanfordCore(PORT, path)
-    stfCore = StanfordCoreNLP('http://localhost', port=PORT, timeout=5000)
-    #stfCore = None
+    if stf:
+        pro = spinStanfordCore(PORT, path)
+        stfCore = StanfordCoreNLP('http://localhost', port=PORT, timeout=5000)
+    else:
+        stfCore = None
+
     pro = calDataIDF(stfCore, pro, path)
 
     print"---------------------------------------------------------------"
     print"Getting all Top Nouns"
     print"---------------------------------------------------------------"
     pro = updateTopNouns(stfCore, pro, path)
-    stopStanfordCore(pro)
+
+    if stf:
+        stopStanfordCore(pro)
 
     print"---------------------------------------------------------------"
     print "Linking Letters to Other Objects"
@@ -746,9 +734,16 @@ def updateData(path):
     getDates()
 
 def printDemoData(rekl):
+    """
+    Prints the top nouns for a specific letter
+
+    :arg:
+        rekl (str): a sting containing letter's ID
+    """
+
     print "OCR:\n"
     try:
-        file = open('ocrList/' + rekl + ".txt", 'r')
+        file = open('ocr/' + rekl + ".txt", 'r')
         print file.read()
         file.close()
     except:
@@ -762,6 +757,17 @@ def printDemoData(rekl):
         print "Noun #" + str(i + 1) + ": " + nouns[i]
 
 def spinStanfordCore(port, path):
+    """
+    Starts Stanford Core
+
+    :arg:
+        port (int): the port to be used by Stanford Core
+        path (str): a sting containing the path to this script
+
+    :returns:
+         object: a object that points to the Stanford Core process
+    """
+
     print "Starting Core"
     path = path[:-6]
     pro = subprocess.Popen(['java', '-mx500m', '-cp', path + '../stanford-corenlp/*',
@@ -776,12 +782,23 @@ def spinStanfordCore(port, path):
     return pro
 
 def stopStanfordCore(pro):
+    """
+    Stops Stanford Core
+
+    :arg:
+        pro (object): a object that points to the Stanford Core process
+    """
+
     print "Stoping Core"
     os.killpg(os.getpgid(pro.pid), signal.SIGTERM)
     time.sleep(5)
     print "Core Stoped"
 
 def main():
+    """
+    Parses the command line input and runs the appropriate functionality
+    """
+
     os.chdir(os.path.dirname(sys.argv[0]))
     args = sys.argv
 
@@ -789,7 +806,13 @@ def main():
         if args[1] == '-r':
             printDemoData(args[2])
         if args[1] == '-u':
-            updateData(sys.argv[0])
+            if len(args) > 2:
+                if args[2] == '--stfcore=False':
+                    updateData(sys.argv[0], stf=False)
+                else:
+                    updateData(sys.argv[0])
+            else:
+                updateData(sys.argv[0])
         if args[1] == '-d':
             linkLetters()
         if args[1] == '-n':
