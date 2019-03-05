@@ -652,7 +652,11 @@ def linkLetters():
             e = sys.exc_info()[0]
             print(e)
 
-            links[k] = []
+            info = {}
+            info["suggestions"] = []
+            info["titles"] = []
+
+            links[k] = info
 
             continue
 
@@ -726,7 +730,6 @@ def updateData(path, stf=True):
     print "Linking Letters to Other Objects"
     print"---------------------------------------------------------------"
     linkLetters()
-
 
     print"---------------------------------------------------------------"
     print "Getting Previous and Next Letters"
