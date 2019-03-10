@@ -16,6 +16,8 @@ def upload():
             
             deleteAndReUpload(session, id, dsid, currentCSV)
 
+upload()
+
 
 
 
