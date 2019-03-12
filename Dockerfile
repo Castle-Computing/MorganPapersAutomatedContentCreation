@@ -142,9 +142,6 @@ RUN touch /var/log/cron.log
 # Give execution rights on the cron job
 RUN chmod 0644 /etc/cron.d/simple-cron
 
-# Give execution rights on the run script
-RUN chmod +x /usr/src/app/run.sh
-
 WORKDIR /usr/src/app
 
 COPY requirements.txt ./
@@ -173,4 +170,4 @@ ENV ISLANDORA_PASSWORD SECRET
 
 # Run the command on container startup
 #CMD cron -f && python /usr/src/app/GetNounsNLP/NLP.py -u
-CMD echo ISLANDORA_PASSWORD >> /usr/src/app/UploadContent/configuration.ini && sudo /usr/src/app/run.sh
+CMD chmod +x /usr/src/app/run.sh && echo ISLANDORA_PASSWORD >> /usr/src/app/UploadContent/configuration.ini && sudo /usr/src/app/run.sh
