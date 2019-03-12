@@ -15,9 +15,3 @@ def upload():
                 currentCSV += data[id]["suggestions"][y] + "," + data[id]["titles"][y] + "\n"
             
             deleteAndReUpload(session, id, dsid, currentCSV)
-
-upload()
-
-
-
-
