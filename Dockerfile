@@ -142,6 +142,9 @@ RUN touch /var/log/cron.log
 # Give execution rights on the cron job
 RUN chmod 0644 /etc/cron.d/simple-cron
 
+# Give execution rights on the run script
+RUN chmod +x /usr/src/app/run.sh
+
 WORKDIR /usr/src/app
 
 COPY requirements.txt ./
