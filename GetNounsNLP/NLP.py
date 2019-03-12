@@ -328,7 +328,7 @@ def updateTopNouns(stfCore, pro, path):
             e = sys.exc_info()[0]
             print(e)
 
-    with open('TopNounsData.json', 'w') as output:
+    with open('../Content/TopNounsData.json', 'w') as output:
         json.dump(lettersTopNouns, output)
         output.close()
 
@@ -402,7 +402,6 @@ def getDates():
     """
     Gets the previous and next letters for each letter. It saves the information on the prevAndNext.json file
     """
-
     dates = {}
 
     with open("../Content/Children.txt") as f:
@@ -411,8 +410,7 @@ def getDates():
         for line in lines:
             pidValues = line.split(",")
             xmlURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + pidValues[0] + "/datastream/MODS"
-            xmlRequest = urllib2.Request(xmlURL, headers={
-                "authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+            xmlRequest = urllib2.Request(xmlURL)
 
             try:
                 xmlContent = urllib2.urlopen(xmlRequest)
@@ -642,8 +640,7 @@ def linkLetters():
         #print OBJECTS_URL + searchStr
 
         try:
-            data = urllib2.Request(OBJECTS_URL + searchStr,
-                        headers={"authorization": "Basic Y2FzdGxlX2NvbXB1dGluZzo4PnoqPUw0QmU2TWlEP1FB"})
+            data = urllib2.Request(OBJECTS_URL + searchStr)
 
             parsedData = json.load(urllib2.urlopen(data))
 
@@ -746,7 +743,7 @@ def printDemoData(rekl):
 
     print "OCR:\n"
     try:
-        file = open('ocr/' + rekl + ".txt", 'r')
+        file = open('../Content/ocr/' + rekl + ".txt", 'r')
         print file.read()
         file.close()
     except:
