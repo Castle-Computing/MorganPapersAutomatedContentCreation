@@ -165,6 +165,9 @@ RUN mkdir stanford-corenlp && unzip stanford-corenlp-full-2018-10-05.zip \
 
 COPY . .
 
+# Set Islandora API password
+ENV ISLANDORA_PASSWORD SECRET
+RUN echo ISLANDORA_PASSWORD >> /usr/src/app/UploadContent/configuration.ini
 # Run the command on container startup
 #CMD cron -f && python /usr/src/app/GetNounsNLP/NLP.py -u
-CMD python /usr/src/app/GetNounsNLP/NLP.py -u
+CMD /usr/src/app/run.sh
