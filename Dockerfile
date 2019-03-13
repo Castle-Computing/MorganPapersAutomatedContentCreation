@@ -172,5 +172,4 @@ COPY . .
 ENV ISLANDORA_PASSWORD SECRET
 
 # Run the command on container startup
-#CMD cron -f && python /usr/src/app/GetNounsNLP/NLP.py -u
-CMD chmod +x /usr/src/app/run.sh && echo ISLANDORA_PASSWORD >> /usr/src/app/UploadContent/configuration.ini && /usr/src/app/run.sh
+CMD chmod +x /usr/src/app/run.sh && echo ISLANDORA_PASSWORD >> /usr/src/app/UploadContent/configuration.ini && cron -f

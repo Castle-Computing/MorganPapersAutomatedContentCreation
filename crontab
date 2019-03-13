@@ -1,2 +1,2 @@
-0 0 */2 * * /usr/src/app/run.sh
+0 0,5,10,15 * * * /usr/src/app/run.sh
 # An empty line is required at the end of this file for a valid cron file.
