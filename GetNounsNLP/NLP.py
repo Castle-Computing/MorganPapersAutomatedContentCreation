@@ -410,7 +410,23 @@ def getDates():
         for line in lines:
             pidValues = line.split(",")
             xmlURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + pidValues[0] + "/datastream/MODS"
+            secretDateURL = "https://digital.lib.calpoly.edu/islandora/rest/v1/object/" + pidValues[0] +\
+                            "/datastream/MORGAN_PAPERS_SECRET_DATE"
+
+            secretDateRequest = urllib2.Request(secretDateURL)
             xmlRequest = urllib2.Request(xmlURL)
+
+            print pidValues[0]
+
+            try:
+                secretDateContent = urllib2.urlopen(secretDateRequest)
+                if secretDateContent.getcode() == 200:
+                    date = secretDateContent.read()
+                    date = date.split("-")
+                    dates[pidValues[0]] = int(date[0]) * 10000 + int(date[1]) * 100 + int(date[2][:2])
+                    continue
+            except:
+                pass
 
             try:
                 xmlContent = urllib2.urlopen(xmlRequest)
@@ -418,19 +434,20 @@ def getDates():
                     xmlContent.close()
                     continue
 
-                print pidValues[0]
-
                 xmlData = ET.fromstring(xmlContent.read())
                 xmlContent.close()
 
                 for i in range(len(xmlData)):
+                    if (pidValues[0] == "rekl:90935"):
+                        print xmlData[i].tag
                     if str(xmlData[i].tag) == "{http://www.loc.gov/mods/v3}originInfo":
                         date = xmlData[i][0].text
 
                         if date == None:
                             break
                         if "circa" in date:
-                            date = date[6:]
+                            #date = date[6:]
+                            break
 
                         date = date.split("-")
 
@@ -713,12 +730,12 @@ def updateData(path, stf=True):
     else:
         stfCore = None
 
-    pro = calDataIDF(stfCore, pro, path)
+    #pro = calDataIDF(stfCore, pro, path)
 
     print"---------------------------------------------------------------"
     print"Getting all Top Nouns"
     print"---------------------------------------------------------------"
-    pro = updateTopNouns(stfCore, pro, path)
+    #pro = updateTopNouns(stfCore, pro, path)
 
     if stf:
         stopStanfordCore(pro)
@@ -726,7 +743,7 @@ def updateData(path, stf=True):
     print"---------------------------------------------------------------"
     print "Linking Letters to Other Objects"
     print"---------------------------------------------------------------"
-    linkLetters()
+    #linkLetters()
 
     print"---------------------------------------------------------------"
     print "Getting Previous and Next Letters"
