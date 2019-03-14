@@ -20,8 +20,11 @@ def deleteAndReUpload(session, pid, dsid, content):
     base_url = 'https://digital.lib.calpoly.edu/islandora/rest/v1/object/' + pid + '/datastream'
     delete_url = base_url + "/" + dsid
 
-    delete_response = session.delete(delete_url)
-    print("Deleting with " + delete_url + " returned code: " + str(delete_response.status_code))
+    try:
+        delete_response = session.delete(delete_url)
+        print("Deleting with " + delete_url + " returned code: " + str(delete_response.status_code))
+    except:
+        print("Failed to delete " + delete_url)
     
     multipartFormData = MultipartEncoder(
         fields={
@@ -32,7 +35,9 @@ def deleteAndReUpload(session, pid, dsid, content):
     )
 
     headers = { 'Content-Type': multipartFormData.content_type }
-
-    post_response = session.post(base_url, headers=headers, data=multipartFormData)
-    print("Posting with " + base_url + " returned code: " + str(post_response.status_code))
+    try:
+        post_response = session.post(base_url, headers=headers, data=multipartFormData)
+        print("Posting with " + base_url + " returned code: " + str(post_response.status_code))
+    except:
+        print("Failed to post " + base_url)
 

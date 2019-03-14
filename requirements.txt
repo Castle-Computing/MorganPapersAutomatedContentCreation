@@ -2,3 +2,4 @@ nltk==3.3
 textblob==0.15.1
 stanfordcorenlp==3.9.1.1
 urllib3==1.24.1
+timeout-decorator==0.4.1
