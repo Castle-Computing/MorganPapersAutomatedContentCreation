@@ -7,7 +7,6 @@ def upload():
     with open('../Content/datesForSequenceNavigator.csv') as f:
         data = f.read().splitlines()
         dsid = 'MORGAN_PAPERS_SECRET_DATE'
-        print data
 
         for i in range(1, len(data)):
             items = data[i].split(",")
@@ -16,7 +15,7 @@ def upload():
                 print "ID: " + items[0]
                 print "Date: " + items[2]
 
-                deleteAndReUpload(session, items[0], dsid, items[1])
+                deleteAndReUpload(session, items[0], dsid, items[2])
 
 
 if __name__ == '__main__':
